@@ -255,3 +255,9 @@ label.choice, label.btn { cursor: pointer; }
 .ib.queued { color: #c77700; }
 @media (prefers-color-scheme: dark) { .ib.queued { color: #ffc24d; } }
 .hint { display: flex; align-items: center; gap: 6px; margin: 0; }
+.ctl.one { flex-wrap: nowrap; gap: 6px; }
+.ctl.one .cook { margin-left: auto; height: 34px; padding: 0 12px; font-size: 13.5px; gap: 5px; white-space: nowrap; }
+.unit-pick { position: relative; display: inline-flex; align-items: center; background: var(--soft); border-radius: 12px; }
+.unit-pick select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--fg); padding: 8px 26px 8px 11px; cursor: pointer; }
+.unit-pick .unit-chev { position: absolute; right: 9px; transform: rotate(90deg); pointer-events: none; color: var(--mu); }
+.h5 + .awake-note { margin: -2px 20px 10px; }

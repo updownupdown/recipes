@@ -7,7 +7,7 @@ import { convertLine, convertTemps, type UnitSystem } from '../units';
 import { useWakeLock } from '../hooks';
 import type { Recipe } from '../types';
 
-const FACTORS = [0.5, 1, 2, 3];
+const FACTORS = [0.5, 1, 2];
 type Body = Pick<Recipe, 'title' | 'categories' | 'servings' | 'ingredients' | 'instructions' | 'notes' | 'source' | 'time'>;
 
 function Linkify({ text }: { text: string }) {
@@ -46,7 +46,6 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
 
   const toggle = (key: string) => setDone((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   const servings = recipe.servings ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
-  const setServings = (v: number) => { if (recipe.servings && v > 0) setFactor(v / recipe.servings); };
   const ingCount = recipe.ingredients.filter((l) => !l.startsWith('#')).length;
   const ingDone = [...done].filter((k) => k.startsWith('i')).length;
 
@@ -70,30 +69,25 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
         </div>
       </div>
 
-      <div className="ctl">
+      <div className="ctl one">
         <div className="seg sm" role="group" aria-label="Scale">
           {FACTORS.map((f) => <button key={f} className={factor === f ? 'on' : ''} onClick={() => setFactor(f)}>{f === 0.5 ? '½' : f}×</button>)}
         </div>
-        <div className="seg sm" role="group" aria-label="Units">
-          {(['orig', 'metric', 'us'] as const).map((u) => <button key={u} className={units === u ? 'on' : ''} onClick={() => setUnits(u)}>{u === 'orig' ? 'Original' : u === 'metric' ? 'Metric' : 'US'}</button>)}
-        </div>
-      </div>
-      {recipe.servings && <div className="ctl">
-        {recipe.servings && (
-          <div className="stp" aria-label="Servings">
-            <button onClick={() => setServings((servings ?? 1) - 1)} aria-label="Fewer servings"><Icon name="minus" size={12} /></button>
-            <span>{servings}</span>
-            <button onClick={() => setServings((servings ?? 0) + 1)} aria-label="More servings"><Icon name="plus" size={12} /></button>
-          </div>
-        )}
-        {actions}
-      </div>}
-
-      <div className="h5"><b>Ingredients</b>
+        <label className="unit-pick">
+          <select value={units} onChange={(e) => setUnits(e.target.value as UnitSystem)} aria-label="Units">
+            <option value="orig">Original</option>
+            <option value="metric">Metric</option>
+            <option value="us">US</option>
+          </select>
+          <Icon name="chev" size={12} className="unit-chev" />
+        </label>
         <button className={'cook' + (cook ? ' on' : '')} onClick={() => setCook((c) => !c)} aria-pressed={cook}>
           <Icon name="flame" size={15} />Cook mode
         </button>
+        {actions}
       </div>
+
+      <div className="h5"><b>Ingredients</b></div>
       {cook && <p className="awake-note"><Icon name="sun" size={12} />{wakeSupported ? 'Screen stays on. ' : ''}{ingDone ? `${ingDone} of ${ingCount} ready.` : 'Tap ingredients and steps to check them off.'}</p>}
       <div className={'ing' + (cook ? ' cooking' : '')}>
         {recipe.ingredients.map((line, i) => {
