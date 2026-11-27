@@ -4,4 +4,4 @@ export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 // Address of the free Cloudflare Worker in worker/recipe-reader.js, used by "Add from a web link".
 // Empty until the worker is deployed; the app then offers paste instead.
-export const RECIPE_READER_URL = '';
+export const RECIPE_READER_URL = 'https://myrecipes-reader.updownupdown.workers.dev/';
