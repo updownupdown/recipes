@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { deleteRecipe, markViewed, setCookNext, setFavorite } from '../db';
 import { download, slug, toJSON, toText } from '../exporters';
-import { goBack } from '../hooks';
+import { replace } from '../hooks';
 import { Icon } from '../icons';
 import { shareUrl } from '../share';
 import type { Recipe } from '../types';
@@ -25,7 +25,7 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
   const remove = async () => {
     if (!confirm(`Delete “${recipe.title}”?\n\nYou can bring it back from History and undo in the menu.`)) return;
     await deleteRecipe(recipe.id);
-    goBack('');
+    replace('');
   };
 
   return (

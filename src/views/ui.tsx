@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { isSignedIn } from '../auth';
-import { go, goBack } from '../hooks';
+import { go } from '../hooks';
 import { syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
 
@@ -70,7 +70,7 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const close = (e: Event) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const close = (e: Event) => { const t = e.target as Element; if (!ref.current?.contains(t) || t.classList?.contains('dim')) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', close);
     document.addEventListener('keydown', esc);
@@ -92,7 +92,7 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
       </button>
       {open && (
         <>
-          <div className="dim" />
+          <div className="dim" onPointerDown={(e) => { e.preventDefault(); setOpen(false); }} onClick={() => setOpen(false)} />
           <div className="menu" role="menu">
             <div className={'menu-sync' + (s.kind === 'off' ? ' off' : '')}>
               <Icon name={s.kind === 'idle' || s.kind === 'syncing' ? 'cloud' : 'cloudOff'} size={18} />
@@ -124,9 +124,9 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
   );
 }
 
-/** Back to the previous page in the app; `fallback` is used when there is none (opened from a link). */
-export function BackButton({ fallback = '' }: { fallback?: string }) {
-  return <button type="button" className="ib flat" onClick={() => goBack(fallback)} aria-label="Back"><Icon name="back" /></button>;
+/** Always goes to the home screen (the phone's own Back button still steps back through pages). */
+export function BackButton(_: { fallback?: string }) {
+  return <button type="button" className="ib flat" onClick={() => go('')} aria-label="Home"><Icon name="home" /></button>;
 }
 
 export function TopBar({ title, back, recipes, extra }: { title?: string; back?: string; recipes: Recipe[]; extra?: React.ReactNode }) {
