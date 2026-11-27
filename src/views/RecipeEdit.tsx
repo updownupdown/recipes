@@ -79,7 +79,7 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
         </div>
 
         <div className="row gap">
-          <label className="lbl grow">Time <small>optional</small><input id="time" className="field" placeholder="40 min" value={time} onChange={(e) => setTime(e.target.value)} /></label>
+          <label className="lbl grow">Time<input id="time" className="field" placeholder="e.g. 40 min" value={time} onChange={(e) => setTime(e.target.value)} /></label>
           <label className="lbl grow">Servings<input id="servings" className="field" type="number" min="0" step="any" inputMode="decimal" value={servings} onChange={(e) => setServings(e.target.value)} /></label>
         </div>
         <label className="lbl">Ingredients <small>one per line; start a line with # for a section, like “# Sauce”</small>

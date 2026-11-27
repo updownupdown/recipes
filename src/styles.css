@@ -220,3 +220,7 @@ div.lbl { flex-direction: row; gap: 6px; align-items: baseline; margin-bottom: -
 .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--on-ink); padding: 9px 18px; border-radius: 999px; animation: fade 2.2s forwards; z-index: 30; }
 @keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } .card:active { transform: none; } }
+.bar { height: 6px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--ink); transition: width .3s; }
+label.choice, label.btn { cursor: pointer; }
+.lbl .field, .lbl textarea { font-weight: 400; }
