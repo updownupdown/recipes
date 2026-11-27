@@ -6,7 +6,7 @@ const UF = Object.keys(UNICODE_FRACTIONS).join('');
 
 // One number: "1 1/2", "1½", "½", "1/2", "1.5", "1,5", "2"
 const NUM = `(?:\\d+\\/\\d+|\\d+(?:[.,]\\d+)?(?:\\s*[${UF}]|\\s+\\d+\\/\\d+)?|[${UF}])`;
-const LEAD = new RegExp(`^(\\s*)(${NUM})(?:(\\s*(?:-|–|to)\\s*)(${NUM}))?`);
+export const LEAD = new RegExp(`^(\\s*)(${NUM})(?:(\\s*(?:-|–|to)\\s*)(${NUM}))?`);
 
 export function parseNumber(s: string): number {
   s = s.trim().replace(',', '.');
@@ -62,7 +62,7 @@ export function splitAmount(line: string): [string, string] {
   let amount = m[0].trim();
   let rest = line.slice(m[0].length);
   // Pull a unit along with the amount for nicer columns.
-  const u = rest.match(/^\s*(cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|g|kg|grams?|ml|l|liters?|litres?|oz|ounces?|lbs?|pounds?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg)\b\.?/i);
+  const u = rest.match(/^\s*(fl\.?\s*oz|cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|g|kg|grams?|ml|cl|dl|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg)\b\.?/i);
   if (u) {
     amount += ' ' + u[0].trim();
     rest = rest.slice(u[0].length);

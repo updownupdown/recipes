@@ -6,7 +6,8 @@ import { download, fromJSON, toHTML, toJSON, toText } from '../exporters';
 import { Icon } from '../icons';
 import { markSignedOut, syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
-import { RecipeTile, SyncBadge } from './ui';
+import { BackButton, RecipeTile, SyncBadge } from './ui';
+import { RecentlyDeleted, VersionHistory } from './History';
 
 export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: string }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -32,9 +33,14 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     try {
-      let total = 0;
-      for (const f of files) total += await mergeRecipes(fromJSON(await f.text()));
-      setMsg(`Imported ${total} recipe${total === 1 ? '' : 's'}.`);
+      let total = 0, seen = 0;
+      for (const f of files) {
+        const list = fromJSON(await f.text());
+        seen += list.length;
+        total += await mergeRecipes(list);
+      }
+      const same = seen - total;
+      setMsg(`Imported ${total} recipe${total === 1 ? '' : 's'}.` + (same ? ` ${same} ${same === 1 ? 'was' : 'were'} already up to date.` : ''));
     } catch (e) {
       setMsg(`Couldn't import: ${(e as Error).message} Check that it's a MyRecipes JSON file.`);
     }
@@ -54,7 +60,7 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
   return (
     <div className="page">
       <header className="hd">
-        <a className="ib flat" href="#/" aria-label="Back"><Icon name="back" /></a>
+        <BackButton />
         <h1 className="small">Settings</h1>
       </header>
       <div className="pad-x stack">
@@ -71,6 +77,9 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
             </>
           )}
         </section>
+
+        <VersionHistory connected={connected} onMessage={(m) => { setMsg(m); scrollTo(0, 0); }} />
+        <RecentlyDeleted onMessage={(m) => { setMsg(m); scrollTo(0, 0); }} />
 
         <section className="panel" id="import">
           <div className="panel-head"><span className="tile soft"><Icon name="upload" /></span><span><b>Import</b><small>MyRecipes JSON files. Existing recipes are updated, not duplicated.</small></span></div>

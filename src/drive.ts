@@ -103,3 +103,41 @@ export async function createDoc(token: string, name: string, html: string): Prom
   const j = JSON.parse(await multipart(token, meta, html, 'text/html', 'id,webViewLink'));
   return j.webViewLink as string;
 }
+
+/* Version history. Drive keeps every upload of recipes.json as a revision (30 days or the latest 100);
+   revisions marked keepForever are kept for good. */
+export interface Revision { id: string; modifiedTime: string; size?: string; keepForever?: boolean }
+
+export async function listRevisions(token: string, fileId: string): Promise<Revision[]> {
+  const out: Revision[] = [];
+  let page = '';
+  do {
+    const r = await call(token, `${API}/files/${fileId}/revisions?pageSize=200&fields=nextPageToken,revisions(id,modifiedTime,size,keepForever)${page ? '&pageToken=' + page : ''}`);
+    const j = await r.json();
+    out.push(...(j.revisions ?? []));
+    page = j.nextPageToken ?? '';
+  } while (page);
+  return out;
+}
+
+export async function downloadRevision(token: string, fileId: string, revId: string): Promise<string> {
+  return (await call(token, `${API}/files/${fileId}/revisions/${revId}?alt=media`)).text();
+}
+
+export async function keepRevision(token: string, fileId: string, revId: string): Promise<void> {
+  await call(token, `${API}/files/${fileId}/revisions/${revId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepForever: true }),
+  });
+}
+
+/** Keep one version a week forever, so history reaches back further than Drive's 30 days. */
+export async function keepWeeklyRevision(token: string, fileId: string): Promise<void> {
+  const last = Number(ls.get('kept_rev_at') || 0);
+  if (Date.now() - last < 7 * 86400_000) return;
+  const revs = await listRevisions(token, fileId);
+  const newest = revs.at(-1);
+  if (newest && !newest.keepForever) await keepRevision(token, fileId, newest.id);
+  ls.set('kept_rev_at', String(Date.now()));
+}

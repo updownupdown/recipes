@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { currentToken, isSignedIn, requestToken } from './auth';
 import { db, mergeRecipes } from './db';
-import { AuthError, dataFileId, download, fetchEmail, upload } from './drive';
+import { AuthError, dataFileId, download, fetchEmail, keepWeeklyRevision, upload } from './drive';
 import { fromJSON, toJSON } from './exporters';
 
 export type SyncState =
@@ -36,10 +36,12 @@ async function hasLocalChanges(): Promise<boolean> {
 }
 
 let running: Promise<void> | null = null;
+let again = false;      // an edit arrived mid-sync; run once more afterwards
+let applying = false;   // merging Drive data: not a local edit
 
 /** Download, merge, upload. Uses only a valid token unless `interactive` (must be from a tap). */
 export function syncNow(interactive = false): Promise<void> {
-  if (running) return running;
+  if (running) { again = true; return running; }
   running = (async () => {
     let token = currentToken();
     if (!token) {
@@ -54,11 +56,13 @@ export function syncNow(interactive = false): Promise<void> {
     if (!localStorage.getItem('g_email')) fetchEmail(token).catch(() => {});
     const { id } = await dataFileId(token);
     const remote = fromJSON(await download(token, id));
-    await mergeRecipes(remote);
+    applying = true;
+    try { await mergeRecipes(remote); } finally { applying = false; }
     const local = await db.recipes.toArray();
     const remoteMap = new Map(remote.map((r) => [r.id, r.updatedAt]));
     const needUpload = local.length !== remote.length || local.some((r) => remoteMap.get(r.id) !== r.updatedAt);
     if (needUpload) await upload(token, id, toJSON(local));
+    keepWeeklyRevision(token, id).catch(() => {});
     localStorage.setItem(LAST, String(Date.now()));
     setState({ kind: 'idle', last: Date.now() });
   })()
@@ -67,7 +71,10 @@ export function syncNow(interactive = false): Promise<void> {
       else setState({ kind: 'error', message: e.message });
       if (interactive) throw e;
     })
-    .finally(() => { running = null; });
+    .finally(() => {
+      running = null;
+      if (again) { again = false; setTimeout(() => syncNow(false).catch(() => {}), 500); }
+    });
   return running;
 }
 
@@ -80,8 +87,9 @@ export function startAutoSync() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') quiet(); });
   addEventListener('online', quiet);
   let t: ReturnType<typeof setTimeout> | undefined;
-  db.recipes.hook('creating', () => { clearTimeout(t); t = setTimeout(quiet, 1500); });
-  db.recipes.hook('updating', () => { clearTimeout(t); t = setTimeout(quiet, 1500); });
+  const edited = () => { if (applying) return; clearTimeout(t); t = setTimeout(quiet, 1500); };
+  db.recipes.hook('creating', edited);
+  db.recipes.hook('updating', edited);
   // Token expiry: flip to "needs tap" when it lapses.
   setInterval(() => { if (isSignedIn() && !currentToken() && state.kind === 'idle') quiet(); }, 60_000);
 }

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { deleteRecipe, markViewed, setFavorite } from '../db';
 import { download, slug, toJSON, toText } from '../exporters';
-import { go } from '../hooks';
+import { goBack } from '../hooks';
 import { Icon } from '../icons';
 import { shareUrl } from '../share';
 import type { Recipe } from '../types';
 import { RecipeBody } from './RecipeBody';
-import { AppMenu } from './ui';
+import { AppMenu, BackButton } from './ui';
 
 export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Recipe[] }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -26,7 +26,7 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
   return (
     <div className="page">
       <header className="hd">
-        <button className="ib flat" onClick={() => (history.length > 1 ? history.back() : go(''))} aria-label="Back"><Icon name="back" /></button>
+        <BackButton />
         <span className="hd-right">
           <button className={'ib flat' + (recipe.favorite ? ' fav' : '')} onClick={() => setFavorite(recipe.id, !recipe.favorite)} aria-pressed={!!recipe.favorite} aria-label="Favorite">
             <Icon name="heart" style={recipe.favorite ? { fill: 'currentColor' } : undefined} />
@@ -44,7 +44,7 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
         {confirmDelete ? (
           <span className="row gap push">
             <span className="small">Delete this recipe?</span>
-            <button className="pill danger" onClick={async () => { await deleteRecipe(recipe.id); go(''); }}>Delete</button>
+            <button className="pill danger" onClick={async () => { await deleteRecipe(recipe.id); goBack(''); }}>Delete</button>
             <button className="pill" onClick={() => setConfirmDelete(false)}>Keep</button>
           </span>
         ) : (

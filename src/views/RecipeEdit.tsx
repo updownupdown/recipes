@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CATALOG, canonicalCategory, categoryLook, lookVars, recipeLook } from '../categories';
 import { allRecipes, saveRecipe } from '../db';
-import { go } from '../hooks';
+import { goBack, replace } from '../hooks';
 import { Icon } from '../icons';
 import type { Recipe, RecipeDraft } from '../types';
-import { useEffect } from 'react';
 
 const EMPTY: RecipeDraft = { title: '', categories: [], ingredients: [], instructions: [] };
 
@@ -32,6 +31,13 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
   const lines = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
   const look = recipeLook({ title, categories: cats, ingredients: lines(ing) });
 
+  const snapshot = () => JSON.stringify([title, cats, servings, time, ing, ins, notes, source]);
+  const [initial] = useState(snapshot);
+  const cancel = () => {
+    if (snapshot() !== initial && !confirm('Discard your changes?')) return;
+    goBack(recipe ? 'recipe/' + recipe.id : '');
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { setError('Give the recipe a name.'); return; }
@@ -48,13 +54,15 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
       notes: notes.trim() || undefined,
       source: source.trim() || undefined,
     });
-    go('recipe/' + saved.id);
+    // Editing returns to the recipe page it came from; a new recipe takes the place of the Add page.
+    if (recipe) goBack('recipe/' + saved.id);
+    else replace('recipe/' + saved.id);
   };
 
   return (
     <form className="page edit" onSubmit={save}>
       <header className="hd">
-        <a className="ib flat" href={recipe ? `#/recipe/${recipe.id}` : '#/'} aria-label="Cancel"><Icon name="x" /></a>
+        <button type="button" className="ib flat" onClick={cancel} aria-label="Cancel"><Icon name="x" /></button>
         <h1 className="small">{recipe ? 'Edit recipe' : 'New recipe'}</h1>
         <span className="hd-right"><button className="btn" type="submit"><Icon name="check" size={16} />Save</button></span>
       </header>

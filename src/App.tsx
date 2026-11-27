@@ -24,7 +24,7 @@ export function App() {
   let body;
   if (page === 'r' && arg) body = <SharedRecipe data={arg} />;
   else if (!recipes) body = <p className="muted pad">Loading…</p>;
-  else if (page === 'recipe' && arg) body = <RecipeView recipe={recipes.find((r) => r.id === arg)} recipes={recipes} />;
+  else if (page === 'recipe' && arg) body = <RecipeView key={arg} recipe={recipes.find((r) => r.id === arg)} recipes={recipes} />;
   else if (page === 'edit') body = <RecipeEdit key={arg ?? 'new'} recipe={arg ? recipes.find((r) => r.id === arg) : undefined} />;
   else if (page === 'add') body = <AddRecipe />;
   else if (page === 'all') body = <AllRecipes key="all" recipes={recipes} />;

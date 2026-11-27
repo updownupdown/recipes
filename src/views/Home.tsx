@@ -44,7 +44,7 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
           <nav className="qa">
             <a href="#/favorites"><Icon name="heart" /><b>Favorites</b><small>{favs.length ? `${favs.length} saved` : 'none yet'}</small></a>
             <a href="#/all"><Icon name="list" /><b>All recipes</b><small>{recipes.length}, A to Z</small></a>
-            <a href="#/add" className="dark"><Icon name="plus" /><b>Add</b><small>type or paste</small></a>
+            <a href="#/add" className="dark"><Icon name="plus" /><b>Add</b><small>link, photo, text</small></a>
           </nav>
 
           {favs.length > 0 && (

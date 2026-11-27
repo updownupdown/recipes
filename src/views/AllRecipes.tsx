@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSessionState } from '../hooks';
 import { categoryLook, lookVars } from '../categories';
 import { Icon } from '../icons';
 import { categoryCounts, searchRecipes } from '../search';
@@ -8,10 +9,13 @@ import { RecipeCard, SearchBox, TopBar } from './ui';
 type Sort = 'az' | 'new';
 
 export function AllRecipes({ recipes, favoritesOnly: favStart, category }: { recipes: Recipe[]; favoritesOnly?: boolean; category?: string }) {
-  const [q, setQ] = useState('');
-  const [sort, setSort] = useState<Sort>('az');
-  const [favOnly, setFavOnly] = useState(!!favStart);
-  const [cats, setCats] = useState<Set<string>>(new Set());
+  const k = 'list:' + (category ?? (favStart ? 'fav' : 'all')) + ':';
+  const [q, setQ] = useSessionState(k + 'q', '');
+  const [sort, setSort] = useSessionState<Sort>(k + 'sort', 'az');
+  const [favOnly, setFavOnly] = useSessionState(k + 'fav', !!favStart);
+  const [catList, setCatList] = useSessionState<string[]>(k + 'cats', []);
+  const cats = new Set(catList);
+  const setCats = (f: Set<string> | ((s: Set<string>) => Set<string>)) => setCatList((l) => [...(typeof f === 'function' ? f(new Set(l)) : f)]);
   const [filterOpen, setFilterOpen] = useState(false);
   const counts = useMemo(() => categoryCounts(recipes), [recipes]);
 
@@ -36,7 +40,7 @@ export function AllRecipes({ recipes, favoritesOnly: favStart, category }: { rec
 
   return (
     <div className="page">
-      <TopBar back="#/" title={category ? undefined : title} recipes={recipes} />
+      <TopBar back="" title={category ? undefined : title} recipes={recipes} />
       {look && (
         <div className="band tint" style={lookVars(look)}>
           <span className="band-ic"><Icon name={look.icon} size={22} /></span>

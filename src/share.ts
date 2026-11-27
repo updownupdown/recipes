@@ -1,6 +1,6 @@
 import type { Recipe } from './types';
 
-type Shared = Pick<Recipe, 'id' | 'title' | 'categories' | 'servings' | 'ingredients' | 'instructions' | 'notes' | 'source'>;
+type Shared = Pick<Recipe, 'id' | 'title' | 'categories' | 'servings' | 'ingredients' | 'instructions' | 'notes' | 'source' | 'time'>;
 
 function toB64Url(bytes: Uint8Array): string {
   let s = '';
@@ -19,7 +19,7 @@ async function pipe(data: Uint8Array, stream: CompressionStream | DecompressionS
 export async function encodeRecipe(r: Recipe): Promise<string> {
   const s: Shared = {
     id: r.id, title: r.title, categories: r.categories, servings: r.servings,
-    ingredients: r.ingredients, instructions: r.instructions, notes: r.notes, source: r.source,
+    ingredients: r.ingredients, instructions: r.instructions, notes: r.notes, source: r.source, time: r.time,
   };
   const json = new TextEncoder().encode(JSON.stringify(s));
   return toB64Url(await pipe(json, new CompressionStream('deflate-raw')));

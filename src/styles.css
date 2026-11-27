@@ -224,3 +224,16 @@ div.lbl { flex-direction: row; gap: 6px; align-items: baseline; margin-bottom: -
 .bar i { display: block; height: 100%; background: var(--ink); transition: width .3s; }
 label.choice, label.btn { cursor: pointer; }
 .lbl .field, .lbl textarea { font-weight: 400; }
+.seg.sm button { padding: 5px 10px; font-size: 13px; }
+.have { margin: 8px 16px 0; background: var(--card); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.have select.field { appearance: none; background: var(--soft); box-shadow: none; font-size: 15px; }
+.have input.field { background: var(--soft); box-shadow: none; }
+.awake-note .link { margin-left: 6px; font-size: 12px; }
+.versions { display: flex; flex-direction: column; }
+.version { border-top: 1px solid var(--ln); }
+.version:first-child { border-top: 0; }
+.version-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 2px; text-align: left; font-size: 15px; }
+.version.open .version-row .icon:last-child { transform: rotate(90deg); }
+.version-body { padding: 0 2px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.version-body p { margin: 0; }
+.diff { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }

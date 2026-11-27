@@ -5,6 +5,7 @@ import { guessCategory } from '../categories';
 import { readerConfigured, recipeFromUrl } from '../webImport';
 import type { RecipeDraft } from '../types';
 import { RecipeEdit } from './RecipeEdit';
+import { BackButton } from './ui';
 
 type Mode = 'choose' | 'paste' | 'link' | 'photo' | 'form';
 
@@ -86,7 +87,7 @@ export function AddRecipe() {
     <div className="page">
       <header className="hd">
         {back ? <button className="ib flat" onClick={back} aria-label="Back"><Icon name="back" /></button>
-          : <a className="ib flat" href="#/" aria-label="Back"><Icon name="back" /></a>}
+          : <BackButton />}
         <h1 className="small">{titles[mode]}</h1>
       </header>
 

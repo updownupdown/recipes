@@ -1,5 +1,8 @@
 import type { Recipe } from './types';
 
+/** A short step line ending in ":" is a sub-heading ("For the sauce:"), not a step. */
+export const isStepHeading = (s: string) => s.length < 48 && s.endsWith(':');
+
 export function toJSON(recipes: Recipe[]): string {
   return JSON.stringify({ app: 'MyRecipes', version: 1, exportedAt: new Date().toISOString(), recipes }, null, 2);
 }
@@ -33,13 +36,14 @@ export function toText(recipes: Recipe[]): string {
   return recipes
     .map((r) => {
       const out = [r.title.toUpperCase()];
-      const meta = [r.categories.join(', '), r.servings ? `Serves ${r.servings}` : '', r.source ?? ''].filter(Boolean);
+      const meta = [r.categories.join(', '), r.time ?? '', r.servings ? `Serves ${r.servings}` : '', r.source ?? ''].filter(Boolean);
       if (meta.length) out.push(meta.join(' · '));
       out.push('', 'INGREDIENTS');
       for (const l of r.ingredients) out.push(l.startsWith('#') ? `\n${l.slice(1).trim()}:` : `- ${l}`);
       if (r.instructions.length) {
         out.push('', 'INSTRUCTIONS');
-        r.instructions.forEach((l, i) => out.push(`${i + 1}. ${l}`));
+        let n = 0;
+        for (const l of r.instructions) out.push(isStepHeading(l) ? `\n${l}` : `${++n}. ${l}`);
       }
       if (r.notes) out.push('', 'NOTES', r.notes);
       return out.join('\n');
@@ -68,12 +72,12 @@ export function toHTML(recipes: Recipe[]): string {
   const body = recipes
     .map((r, i) => {
       const out = [`<h1${i ? ' style="page-break-before:always"' : ''}>${esc(r.title)}</h1>`];
-      const meta = [r.categories.join(', '), r.servings ? `Serves ${r.servings}` : ''].filter(Boolean).join(' · ');
+      const meta = [r.categories.join(', '), r.time ?? '', r.servings ? `Serves ${r.servings}` : ''].filter(Boolean).join(' · ');
       if (meta || r.source) out.push(`<p><i>${esc(meta)}${meta && r.source ? ' · ' : ''}${r.source ? linkify(r.source) : ''}</i></p>`);
       out.push('<h2>Ingredients</h2><ul>');
       for (const l of r.ingredients) out.push(l.startsWith('#') ? `</ul><h3>${esc(l.replace(/^#+\s*/, ''))}</h3><ul>` : `<li>${esc(l)}</li>`);
       out.push('</ul>');
-      if (r.instructions.length) out.push('<h2>Instructions</h2><ol>', ...r.instructions.map((s) => `<li>${esc(s)}</li>`), '</ol>');
+      if (r.instructions.length) out.push('<h2>Instructions</h2><ol>', ...r.instructions.map((s) => (isStepHeading(s) ? `</ol><h3>${esc(s.slice(0, -1))}</h3><ol>` : `<li>${esc(s)}</li>`)), '</ol>');
       if (r.notes) out.push('<h2>Notes</h2>', ...r.notes.split('\n').map((p) => `<p>${linkify(p)}</p>`));
       return out.join('');
     })

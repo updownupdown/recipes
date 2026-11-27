@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { isSignedIn } from '../auth';
-import { go } from '../hooks';
+import { go, goBack } from '../hooks';
 import { syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
 
@@ -104,6 +104,7 @@ export function AppMenu({ recipes }: { recipes: Recipe[] }) {
             <button className="mi" onClick={() => nav('settings#export')}><Icon name="download" />Export recipes<small>JSON, text, Doc</small></button>
             <hr />
             <button className="mi" onClick={surprise}><Icon name="shuffle" />Surprise me</button>
+            <button className="mi" onClick={() => nav('settings#history')}><Icon name="clock" />History and undo</button>
             <button className="mi" onClick={() => nav('settings')}><Icon name="settings" />Settings</button>
           </div>
         </>
@@ -112,10 +113,15 @@ export function AppMenu({ recipes }: { recipes: Recipe[] }) {
   );
 }
 
+/** Back to the previous page in the app; `fallback` is used when there is none (opened from a link). */
+export function BackButton({ fallback = '' }: { fallback?: string }) {
+  return <button type="button" className="ib flat" onClick={() => goBack(fallback)} aria-label="Back"><Icon name="back" /></button>;
+}
+
 export function TopBar({ title, back, recipes, extra }: { title?: string; back?: string; recipes: Recipe[]; extra?: React.ReactNode }) {
   return (
     <header className="hd">
-      {back !== undefined && <a className="ib flat" href={back} aria-label="Back"><Icon name="back" /></a>}
+      {back !== undefined && <BackButton fallback={back} />}
       {title && <h1 className={back !== undefined ? 'small' : ''}>{title}</h1>}
       <span className="hd-right">{extra}<SyncBadge /><AppMenu recipes={recipes} /></span>
     </header>

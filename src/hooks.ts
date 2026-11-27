@@ -3,19 +3,65 @@ import { liveQuery } from 'dexie';
 import { allRecipes } from './db';
 import type { Recipe } from './types';
 
+/* Navigation. Each history entry gets a depth, so Back can tell whether the previous page is
+   inside the app (go back to it, keeping its scroll position) or not (go home instead). */
+let depth = typeof history.state?.depth === 'number' ? history.state.depth : 0;
+let replacing = false;
+const scrolls = new Map<number, number>();
+if (typeof history.state?.depth !== 'number') history.replaceState({ depth }, '');
+addEventListener('scroll', () => scrolls.set(depth, scrollY), { passive: true });
+
+function onHashChange(): number | undefined {
+  const st = history.state;
+  if (replacing) {
+    replacing = false;
+    history.replaceState({ depth }, '');
+    return 0;
+  }
+  if (st && typeof st.depth === 'number') {
+    depth = st.depth; // back or forward to a page we've seen
+    return scrolls.get(depth) ?? 0;
+  }
+  depth += 1;
+  history.replaceState({ depth }, '');
+  scrolls.delete(depth);
+  return 0;
+}
+
+const read = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+
 export function useHashRoute(): string[] {
-  const read = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const [parts, setParts] = useState(read);
   useEffect(() => {
-    const on = () => { setParts(read()); window.scrollTo(0, 0); };
+    const on = () => {
+      const y = onHashChange();
+      setParts(read());
+      // Restore after React has rendered the page.
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollTo(0, y ?? 0)));
+    };
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);
   return parts;
 }
 
+/** Open a page (adds a history entry). */
 export function go(path: string) {
   location.hash = '#/' + path.replace(/^\//, '');
+}
+
+/** Swap the current page for another without adding history (after save, delete, import). */
+export function replace(path: string) {
+  const target = '#/' + path.replace(/^\//, '');
+  if (location.hash === target) return;
+  replacing = true;
+  location.replace(target);
+}
+
+/** Back to the previous page in the app, or to `fallback` when the app was opened on this page. */
+export function goBack(fallback = '') {
+  if (depth > 0) history.back();
+  else replace(fallback);
 }
 
 export function useRecipes(): Recipe[] | undefined {
@@ -53,4 +99,17 @@ export function useWakeLock(on: boolean): boolean {
 
 export function normalize(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+/** useState that survives leaving the page and coming back in the same session (filters, search). */
+export function useSessionState<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => void] {
+  const [v, setV] = useState<T>(() => {
+    try { const s = sessionStorage.getItem(key); return s === null ? initial : (JSON.parse(s) as T); } catch { return initial; }
+  });
+  const set = (n: T | ((p: T) => T)) => setV((p) => {
+    const next = typeof n === 'function' ? (n as (p: T) => T)(p) : n;
+    try { sessionStorage.setItem(key, JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
+  });
+  return [v, set];
 }
