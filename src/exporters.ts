@@ -25,6 +25,7 @@ export function fromJSON(text: string): Recipe[] {
       source: r.source,
       time: r.time,
       favorite: r.favorite,
+      cookNext: r.cookNext,
       createdAt: r.createdAt ?? now,
       updatedAt: r.updatedAt ?? now,
       deleted: r.deleted,

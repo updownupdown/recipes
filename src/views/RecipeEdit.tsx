@@ -49,6 +49,7 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
       servings: parseFloat(servings) || undefined,
       time: time.trim() || undefined,
       favorite: recipe?.favorite,
+      cookNext: recipe?.cookNext,
       ingredients: lines(ing),
       instructions: lines(ins),
       notes: notes.trim() || undefined,

@@ -237,7 +237,7 @@ label.choice, label.btn { cursor: pointer; }
 .version-body { padding: 0 2px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .version-body p { margin: 0; }
 .diff { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
-.q { width: 4.9em; min-width: 0; }
+.q { width: 5.4em; min-width: 0; }
 .q.none { color: var(--ln2); font-weight: 400; }
 .steps li { cursor: default; }
 .steps li.tap { cursor: pointer; }
@@ -252,3 +252,6 @@ label.choice, label.btn { cursor: pointer; }
 .h5 { align-items: center; }
 .h5 .cook { height: 32px; font-size: 13px; padding: 0 12px; }
 .h5 + .awake-note { margin: -2px 20px 10px; }
+.ib.queued { color: #c77700; }
+@media (prefers-color-scheme: dark) { .ib.queued { color: #ffc24d; } }
+.hint { display: flex; align-items: center; gap: 6px; margin: 0; }

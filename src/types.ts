@@ -13,6 +13,8 @@ export interface Recipe {
   /** Free text like "40 min" or "2 h". */
   time?: string;
   favorite?: boolean;
+  /** Set (to when it was added) while the recipe is on the Cook next list. */
+  cookNext?: number;
   createdAt: number;
   updatedAt: number;
   /** Tombstone: set when deleted so the delete can sync. */

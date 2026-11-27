@@ -52,6 +52,12 @@ export async function mergeRecipes(incoming: Recipe[]): Promise<number> {
   return changed;
 }
 
+export async function setCookNext(id: string, on: boolean): Promise<void> {
+  const r = await db.recipes.get(id);
+  if (!r) return;
+  await db.recipes.put({ ...r, cookNext: on ? Date.now() : undefined, updatedAt: Date.now() });
+}
+
 export async function setFavorite(id: string, favorite: boolean): Promise<void> {
   const r = await db.recipes.get(id);
   if (!r) return;

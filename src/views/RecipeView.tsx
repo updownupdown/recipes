@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { deleteRecipe, markViewed, setFavorite } from '../db';
+import { deleteRecipe, markViewed, setCookNext, setFavorite } from '../db';
 import { download, slug, toJSON, toText } from '../exporters';
 import { goBack } from '../hooks';
 import { Icon } from '../icons';
@@ -33,6 +33,9 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
       <header className="hd">
         <BackButton />
         <span className="hd-right">
+          <button className={'ib flat' + (recipe.cookNext ? ' queued' : '')} onClick={() => { setCookNext(recipe.id, !recipe.cookNext); setMsg(recipe.cookNext ? 'Removed from Cook next' : 'Added to Cook next'); }} aria-pressed={!!recipe.cookNext} aria-label="Cook next" title="Cook next">
+            <Icon name="bookmark" style={recipe.cookNext ? { fill: 'currentColor' } : undefined} />
+          </button>
           <button className={'ib flat' + (recipe.favorite ? ' fav' : '')} onClick={() => setFavorite(recipe.id, !recipe.favorite)} aria-pressed={!!recipe.favorite} aria-label="Favorite">
             <Icon name="heart" style={recipe.favorite ? { fill: 'currentColor' } : undefined} />
           </button>

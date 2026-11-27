@@ -22,6 +22,19 @@ function StepText({ text }: { text: string }) {
   return <>{parts.map((p, i) => (i % 2 ? <span key={i} className="tm"><Icon name="timer" size={11} />{p}</span> : p))}</>;
 }
 
+const SHORT: [RegExp, string][] = [
+  [/\btablespoons?\b|\btbsps\b/i, 'tbsp'], [/\bteaspoons?\b|\btsps\b/i, 'tsp'], [/\bounces?\b/i, 'oz'],
+  [/\bpounds?\b|\blbs\b/i, 'lb'], [/\bgrams?\b/i, 'g'], [/\bpackages?\b/i, 'pkg'], [/\bpinches\b/i, 'pinch'],
+];
+const FRAC: Record<string, string> = { '1/2': '½', '1/3': '⅓', '2/3': '⅔', '1/4': '¼', '3/4': '¾', '1/8': '⅛', '3/8': '⅜' };
+
+/** Compact amount for the amount column: "1 1/2 teaspoons" -> "1½ tsp". */
+function shortAmount(a: string): string {
+  let t = a.replace(/\.$/, '');
+  for (const [re, s] of SHORT) t = t.replace(re, s);
+  return t.replace(/(\d+)\s+(\d\/\d)\b/g, (m, w, f) => (FRAC[f] ? w + FRAC[f] : m)).replace(/\b(\d\/\d)\b/g, (m) => FRAC[m] ?? m);
+}
+
 export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.ReactNode }) {
   const [factor, setFactor] = useState(1);
   const [cook, setCook] = useState(false);
@@ -90,7 +103,7 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
           const on = done.has(key);
           const cells = <>
               {cook && <span className="bx">{on && <Icon name="check" size={11} />}</span>}
-              <span className={'q' + (amt ? '' : ' none')}>{amt || '–'}</span>
+              <span className={'q' + (amt ? '' : ' none')}>{amt ? shortAmount(amt) : '–'}</span>
               <span className="tx">{rest}</span>
             </>;
             return cook

@@ -4,7 +4,7 @@ import type { Recipe } from './types';
 /* Restoring an old version or a deleted recipe. Restores are written as new edits (fresh updatedAt),
    so they sync to every device like any other change and can themselves be undone from history. */
 
-const content = (r: Recipe) => JSON.stringify([r.title, r.categories, r.servings, r.time, r.ingredients, r.instructions, r.notes, r.source, !!r.favorite]);
+const content = (r: Recipe) => JSON.stringify([r.title, r.categories, r.servings, r.time, r.ingredients, r.instructions, r.notes, r.source, !!r.favorite, !!r.cookNext]);
 
 export interface VersionDiff { added: Recipe[]; removed: Recipe[]; changed: Recipe[]; total: number }
 

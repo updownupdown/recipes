@@ -15,6 +15,7 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
   const setQuery = (v: string) => { setQ(v); ss.set('home_q', v); };
   const results = useMemo(() => (q.trim() ? searchRecipes(recipes, q) : []), [recipes, q]);
   const favs = recipes.filter((r) => r.favorite);
+  const queue = recipes.filter((r) => r.cookNext).sort((a, b) => a.cookNext! - b.cookNext!);
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const added = [...recipes].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
   const addedIds = new Set(added.map((r) => r.id));
@@ -48,6 +49,13 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
             <a href="#/all"><Icon name="list" /><b>All recipes</b><small>{recipes.length}, A to Z</small></a>
             <a href="#/add" className="dark"><Icon name="plus" /><b>Add</b><small>link, photo, text</small></a>
           </nav>
+
+          <section>
+            <div className="sec"><b>Cook next</b>{queue.length > 0 && <span className="muted small">{queue.length}</span>}</div>
+            {queue.length > 0
+              ? <div className="cards">{queue.map((r) => <RecipeCard key={r.id} r={r} />)}</div>
+              : <p className="hint pad-x small muted"><Icon name="bookmark" size={13} />Tap the bookmark on a recipe to line it up here.</p>}
+          </section>
 
           {favs.length > 0 && (
             <section>
