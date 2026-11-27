@@ -1,11 +1,35 @@
 import { useRef, useState } from 'react';
 import { mergeRecipes } from '../db';
-import { download, fromJSON, toJSON, toText } from '../exporters';
+import { download, fromJSON, toHTML, toJSON, toText } from '../exporters';
+import { isSignedIn, requestToken, signedInEmail, signOut } from '../auth';
+import { createDoc } from '../drive';
+import { markSignedOut, syncNow, useSyncState } from '../sync';
+import { SyncChip } from './SyncChip';
 import type { Recipe } from '../types';
 
 export function DataPage({ recipes }: { recipes: Recipe[] }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState('');
+  const [docLink, setDocLink] = useState('');
+  const [busy, setBusy] = useState(false);
+  const sync = useSyncState();
+  const connected = sync.kind !== 'off' && isSignedIn();
+
+  const connect = async () => {
+    setMsg('');
+    try { await syncNow(true); setMsg('Connected to Google Drive. Your recipes are syncing to MyRecipes/recipes.json.'); }
+    catch (e) { setMsg((e as Error).message); }
+  };
+  const disconnect = () => { signOut(); markSignedOut(); setMsg('Disconnected. Recipes stay on this device.'); };
+  const exportDoc = async () => {
+    setMsg(''); setDocLink(''); setBusy(true);
+    try {
+      const token = await requestToken();
+      const name = chosen.length === 1 ? chosen[0].title : `MyRecipes (${chosen.length} recipes) ${stamp}`;
+      setDocLink(await createDoc(token, name, toHTML(chosen)));
+    } catch (e) { setMsg(`Couldn't create the Google Doc: ${(e as Error).message}`); }
+    setBusy(false);
+  };
   const file = useRef<HTMLInputElement>(null);
   const chosen = picked.size ? recipes.filter((r) => picked.has(r.id)) : recipes;
   const label = picked.size ? `${picked.size} selected` : `all ${recipes.length}`;
@@ -34,7 +58,17 @@ export function DataPage({ recipes }: { recipes: Recipe[] }) {
 
         <section className="card stack">
           <h3>Google Drive sync</h3>
-          <p className="muted">Coming next: sign in once and your recipes sync across your phone and computer.</p>
+          {connected ? (
+            <>
+              <p className="muted">Signed in{signedInEmail() ? ` as ${signedInEmail()}` : ''}. Recipes sync to <b>MyRecipes/recipes.json</b> in your Drive whenever you edit, open the app, or come back online.</p>
+              <div className="row gap wrap"><SyncChip /><button className="link danger" onClick={disconnect}>Disconnect</button></div>
+            </>
+          ) : (
+            <>
+              <p className="muted">Sign in once and your recipes sync between your phone and computer. The app only sees files it creates.</p>
+              <div><button className="btn" onClick={connect}>Connect Google Drive</button></div>
+            </>
+          )}
         </section>
 
         <section className="card stack">
@@ -48,8 +82,9 @@ export function DataPage({ recipes }: { recipes: Recipe[] }) {
           <div className="row gap wrap">
             <button className="btn" disabled={!recipes.length} onClick={() => download(`myrecipes-${stamp}.json`, toJSON(chosen), 'application/json')}>JSON</button>
             <button className="btn" disabled={!recipes.length} onClick={() => download(`myrecipes-${stamp}.txt`, toText(chosen), 'text/plain')}>Plain text</button>
-            <button className="btn" disabled title="Needs Google sign-in">Google Doc</button>
+            <button className="btn" disabled={!recipes.length || busy} onClick={exportDoc}>{busy ? 'Creating…' : 'Google Doc'}</button>
           </div>
+          {docLink && <p className="banner">Google Doc created in your MyRecipes folder. <a href={docLink} target="_blank" rel="noreferrer">Open it</a></p>}
           {recipes.length > 0 && (
             <>
               <div className="row gap"><span className="muted">Pick recipes, or leave all unticked to export everything.</span>

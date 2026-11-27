@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { go, normalize } from '../hooks';
 import type { Recipe } from '../types';
+import { SyncChip } from './SyncChip';
 
 export function RecipeList({ recipes }: { recipes: Recipe[] }) {
   const [q, setQ] = useState(() => sessionStorage.getItem('q') ?? '');
@@ -33,7 +34,7 @@ export function RecipeList({ recipes }: { recipes: Recipe[] }) {
       <header className="top">
         <div className="row between">
           <h1>Recipes</h1>
-          <a className="btn ghost" href="#/data">Import / export</a>
+          <div className="row gap"><SyncChip /><a className="btn ghost small" href="#/data">Menu</a></div>
         </div>
         <input
           className="search"

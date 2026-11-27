@@ -57,3 +57,24 @@ export function download(filename: string, content: string, type: string) {
 export function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'recipe';
 }
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const linkify = (s: string) => esc(s).replace(/https?:\/\/[^\s<)]+/g, (u) => `<a href="${u}">${u}</a>`);
+
+/** HTML that Google Drive converts into a nicely formatted Google Doc. */
+export function toHTML(recipes: Recipe[]): string {
+  const body = recipes
+    .map((r, i) => {
+      const out = [`<h1${i ? ' style="page-break-before:always"' : ''}>${esc(r.title)}</h1>`];
+      const meta = [r.categories.join(', '), r.servings ? `Serves ${r.servings}` : ''].filter(Boolean).join(' · ');
+      if (meta || r.source) out.push(`<p><i>${esc(meta)}${meta && r.source ? ' · ' : ''}${r.source ? linkify(r.source) : ''}</i></p>`);
+      out.push('<h2>Ingredients</h2><ul>');
+      for (const l of r.ingredients) out.push(l.startsWith('#') ? `</ul><h3>${esc(l.replace(/^#+\s*/, ''))}</h3><ul>` : `<li>${esc(l)}</li>`);
+      out.push('</ul>');
+      if (r.instructions.length) out.push('<h2>Instructions</h2><ol>', ...r.instructions.map((s) => `<li>${esc(s)}</li>`), '</ol>');
+      if (r.notes) out.push('<h2>Notes</h2>', ...r.notes.split('\n').map((p) => `<p>${linkify(p)}</p>`));
+      return out.join('');
+    })
+    .join('');
+  return `<html><body>${body}</body></html>`;
+}
