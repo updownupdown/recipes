@@ -25,5 +25,8 @@ describe('quantity', () => {
     expect(splitAmount('700 g chicken thighs')).toEqual(['700 g', 'chicken thighs']);
     expect(splitAmount('4 garlic cloves')).toEqual(['4', 'garlic cloves']);
     expect(splitAmount('salt')).toEqual(['', 'salt']);
+    expect(splitAmount('1/2 lb ground pork')).toEqual(['1/2 lb', 'ground pork']);
+    expect(scaleLine('1/2 lb pork', 2)).toBe('1 lb pork');
+    expect(scaleLine('1 1/2 cup rice', 2)).toBe('3 cup rice');
   });
 });

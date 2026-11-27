@@ -5,7 +5,7 @@ const UNICODE_FRACTIONS: Record<string, number> = {
 const UF = Object.keys(UNICODE_FRACTIONS).join('');
 
 // One number: "1 1/2", "1½", "½", "1/2", "1.5", "1,5", "2"
-const NUM = `(?:\\d+(?:[.,]\\d+)?(?:\\s*[${UF}]|\\s+\\d+\\/\\d+)?|\\d+\\/\\d+|[${UF}])`;
+const NUM = `(?:\\d+\\/\\d+|\\d+(?:[.,]\\d+)?(?:\\s*[${UF}]|\\s+\\d+\\/\\d+)?|[${UF}])`;
 const LEAD = new RegExp(`^(\\s*)(${NUM})(?:(\\s*(?:-|–|to)\\s*)(${NUM}))?`);
 
 export function parseNumber(s: string): number {

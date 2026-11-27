@@ -53,7 +53,7 @@ export function RecipeBody({ recipe }: { recipe: Body }) {
         )}
       </div>
 
-      <h3>Ingredients</h3>
+      <h3>Ingredients{servings ? ` · ${servings} servings` : ''}</h3>
       <ul className="ing">
         {recipe.ingredients.map((line, i) => {
           if (line.startsWith('#')) return <li key={i} className="sub">{line.replace(/^#+\s*/, '')}</li>;
