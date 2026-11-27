@@ -29,9 +29,3 @@ plain-text fallback), and only answers requests from this app's address.
 3. Put the worker's `https://myrecipes-reader.<you>.workers.dev` address in `RECIPE_READER_URL` in `src/config.ts`.
 
 The free plan allows 100,000 requests a day.
-
-## Add from a photo
-
-Text recognition runs in the browser with Tesseract.js. `scripts/copy-ocr.mjs` copies the engine and
-English data into `public/ocr` at build time, so nothing is loaded from third parties and photos never
-leave the device. The files (~7 MB) download on first use and are then cached for offline use.

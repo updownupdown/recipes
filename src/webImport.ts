@@ -1,6 +1,7 @@
 import { RECIPE_READER_URL } from './config';
 import { canonicalCategory, categoryLook, guessCategory } from './categories';
 import { parseRecipeText } from './parse';
+import { fixCaps } from './caps';
 import type { RecipeDraft } from './types';
 
 /* Add-from-link. Browsers can't read other sites directly, so a small free Cloudflare Worker
@@ -24,11 +25,12 @@ export async function recipeFromUrl(link: string): Promise<RecipeDraft> {
   const data = await res.json().catch(() => ({ error: 'Unexpected reply' }));
   if (!res.ok || data.error) throw new WebImportError(data.error || 'That page could not be read.');
   const draft = recipeFromJsonLd(data.jsonld ?? [], data.url ?? link);
-  if (draft) return draft;
+  if (draft) return fixCaps(draft);
   // No structured data: fall back to the page text, which the person tidies before saving.
   if (data.text) {
     const d = parseRecipeText(decodeEntities((data.title ? data.title + '\n' : '') + data.text));
-    return { ...d, source: data.url ?? link, categories: guessed(d.title, d.ingredients.join(' ')) };
+    const f = fixCaps(d);
+    return { ...f, source: data.url ?? link, categories: guessed(f.title, f.ingredients.join(' ')) };
   }
   throw new WebImportError('No recipe found on that page.');
 }

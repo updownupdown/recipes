@@ -27,9 +27,6 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/recipes/index.html',
-        // The photo-reading engine (~7 MB) is only fetched when first used, then kept for offline use.
-        globIgnores: ['**/ocr/**'],
-        runtimeCaching: [{ urlPattern: /\/recipes\/ocr\//, handler: 'CacheFirst', options: { cacheName: 'ocr', expiration: { maxEntries: 10 } } }],
       },
     }),
   ],

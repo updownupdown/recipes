@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons';
 import { parseRecipeText } from '../parse';
 import { guessCategory } from '../categories';
+import { fixCaps } from '../caps';
 import { readerConfigured, recipeFromUrl } from '../webImport';
 import type { RecipeDraft } from '../types';
 import { RecipeEdit } from './RecipeEdit';
 import { BackButton } from './ui';
-import { PhotoReader } from './PhotoReader';
 
-type Mode = 'choose' | 'paste' | 'link' | 'photo' | 'form';
+type Mode = 'choose' | 'paste' | 'link' | 'form';
 
 /** Something shared into the app from another app (Android share sheet), stashed by main.tsx. */
 export function takeShared(): { url?: string; text?: string } | undefined {
@@ -36,7 +36,6 @@ export function AddRecipe() {
   const [draft, setDraft] = useState<RecipeDraft>();
   const [busy, setBusy] = useState<{ label: string; fraction?: number }>();
   const [error, setError] = useState('');
-  const [fromPhoto, setFromPhoto] = useState(false);
   const autoFetched = useRef(false);
 
   const fetchLink = async (u = link) => {
@@ -64,7 +63,7 @@ export function AddRecipe() {
   if (mode === 'form') return <RecipeEdit draft={draft} />;
 
   const back = mode === 'choose' ? undefined : () => { setMode('choose'); setError(''); };
-  const titles: Record<Mode, string> = { choose: 'Add a recipe', paste: fromPhoto ? 'Check the text' : 'Paste text', link: 'From a web link', photo: 'From a photo', form: '' };
+  const titles: Record<Mode, string> = { choose: 'Add a recipe', paste: 'Paste text', link: 'From a web link', form: '' };
 
   return (
     <div className="page">
@@ -78,9 +77,6 @@ export function AddRecipe() {
         <div className="choices">
           <button className="choice" onClick={() => setMode('link')}>
             <span className="tile soft"><Icon name="link" /></span><span><b>From a web link</b><small>Paste the address of a recipe page.</small></span><Icon name="chev" size={15} className="end" />
-          </button>
-          <button className="choice" onClick={() => setMode('photo')}>
-            <span className="tile soft"><Icon name="camera" /></span><span><b>From a photo</b><small>A cookbook page, card or screenshot.</small></span><Icon name="chev" size={15} className="end" />
           </button>
           <button className="choice" onClick={() => setMode('paste')}>
             <span className="tile soft"><Icon name="clipboard" /></span><span><b>Paste text</b><small>From an email, message or note.</small></span><Icon name="chev" size={15} className="end" />
@@ -121,15 +117,12 @@ export function AddRecipe() {
         </div>
       )}
 
-      {mode === 'photo' && <PhotoReader onDone={(t) => { setText(t); setFromPhoto(true); setMode('paste'); }} />}
-
       {mode === 'paste' && (
         <div className="pad-x stack">
-          {fromPhoto && <p className="small muted">Fix anything misread, especially fractions like ½ and ¼. Then continue.</p>}
-          <textarea id="paste" className="field" rows={14} value={text} onChange={(e) => setText(e.target.value)} autoFocus={!fromPhoto}
+          <textarea id="paste" className="field" rows={14} value={text} onChange={(e) => setText(e.target.value)} autoFocus
             placeholder={'Banana bread\nServes 8\n\nIngredients\n3 ripe bananas\n1/3 cup melted butter\n\nInstructions\nPreheat oven to 350°F…'} />
           <div className="row gap">
-            <button className="btn" disabled={!text.trim()} onClick={() => { setDraft(withGuess(parseRecipeText(text))); setMode('form'); }}>Continue</button>
+            <button className="btn" disabled={!text.trim()} onClick={() => { setDraft(withGuess(fixCaps(parseRecipeText(text)))); setMode('form'); }}>Continue</button>
           </div>
         </div>
       )}

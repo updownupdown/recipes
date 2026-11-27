@@ -1,38 +1,66 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CATALOG, canonicalCategory, categoryLook, lookVars, recipeLook } from '../categories';
+import { useEffect, useState } from 'react';
+import { categoryLook, lookVars, recipeLook } from '../categories';
+import { fixCaps, hasAllCaps } from '../caps';
 import { allRecipes, saveRecipe } from '../db';
+import { emptyItem, formatTime, lineToRow, nextId, parseTime, rowToLine, UNIT_OPTIONS, type IngRow, type StepRow } from '../editRows';
 import { goBack, replace } from '../hooks';
 import { Icon } from '../icons';
 import type { Recipe, RecipeDraft } from '../types';
+import { CategoryPicker } from './CategoryPicker';
 
+type Mode = 'rows' | 'text';
 const EMPTY: RecipeDraft = { title: '', categories: [], ingredients: [], instructions: [] };
+const MODE_KEY = 'edit_mode';
+const loadMode = (): Mode => { try { return localStorage.getItem(MODE_KEY) === 'text' ? 'text' : 'rows'; } catch { return 'rows'; } };
+const lines = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
+const toRows = (ing: string[]) => (ing.length ? ing.map(lineToRow) : [emptyItem()]);
+const toSteps = (ins: string[]): StepRow[] => (ins.length ? ins : ['']).map((text) => ({ id: nextId(), text }));
+
+/** Focus a field after React has rendered it. */
+const focusLater = (sel: string) => setTimeout(() => (document.querySelector(sel) as HTMLElement | null)?.focus(), 30);
 
 export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeDraft }) {
   const start = recipe ?? draft ?? EMPTY;
+  const [mode, setModeState] = useState<Mode>(loadMode);
   const [title, setTitle] = useState(start.title);
   const [cats, setCats] = useState<string[]>(start.categories);
-  const [catInput, setCatInput] = useState('');
-  const [servings, setServings] = useState(start.servings ? String(start.servings) : '');
+  const [picking, setPicking] = useState(false);
+  const [servings, setServings] = useState(start.servings ?? 0);
   const [time, setTime] = useState(start.time ?? '');
-  const [ing, setIng] = useState(start.ingredients.join('\n'));
-  const [ins, setIns] = useState(start.instructions.join('\n'));
+  const [timeAsText, setTimeAsText] = useState(() => !!start.time && !parseTime(start.time));
+  // Plain-text mode edits these strings; rows mode edits the arrays. Switching converts between them.
+  const [ingText, setIngText] = useState(start.ingredients.join('\n'));
+  const [insText, setInsText] = useState(start.instructions.join('\n'));
+  const [rows, setRows] = useState<IngRow[]>(() => toRows(start.ingredients));
+  const [steps, setSteps] = useState<StepRow[]>(() => toSteps(start.instructions));
   const [notes, setNotes] = useState(start.notes ?? '');
   const [source, setSource] = useState(start.source ?? '');
   const [error, setError] = useState('');
   const [used, setUsed] = useState<string[]>([]);
   useEffect(() => { allRecipes().then((l) => setUsed([...new Set(l.flatMap((r) => r.categories))])); }, []);
 
-  const suggestions = useMemo(() => [...new Set([...used, ...CATALOG.map((c) => c.name)])].filter((c) => !cats.includes(c)), [used, cats]);
-  const addCat = (v: string) => {
-    const c = canonicalCategory(v);
-    if (c && !cats.includes(c)) setCats([...cats, c]);
-    setCatInput('');
+  const currentIng = () => (mode === 'text' ? lines(ingText) : rows.map(rowToLine).filter(Boolean));
+  const currentIns = () => (mode === 'text' ? lines(insText) : steps.map((s) => s.text.trim()).filter(Boolean));
+  const setContent = (ing: string[], ins: string[]) => {
+    setIngText(ing.join('\n')); setInsText(ins.join('\n'));
+    setRows(toRows(ing)); setSteps(toSteps(ins));
   };
-  const lines = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
-  const look = recipeLook({ title, categories: cats, ingredients: lines(ing) });
+  const setMode = (m: Mode) => {
+    if (m === mode) return;
+    setContent(currentIng(), currentIns());
+    setModeState(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
+  };
 
-  const snapshot = () => JSON.stringify([title, cats, servings, time, ing, ins, notes, source]);
+  const look = recipeLook({ title, categories: cats, ingredients: currentIng() });
+  const snapshot = () => JSON.stringify([title, cats, servings, time, currentIng(), currentIns(), notes, source]);
   const [initial] = useState(snapshot);
+  const shouting = hasAllCaps({ title, ingredients: currentIng(), instructions: currentIns() });
+  const unshout = () => {
+    const f = fixCaps({ title, ingredients: currentIng(), instructions: currentIns(), notes });
+    setTitle(f.title); setNotes(f.notes ?? ''); setContent(f.ingredients, f.instructions);
+  };
+
   const cancel = () => {
     if (snapshot() !== initial && !confirm('Discard your changes?')) return;
     goBack(recipe ? 'recipe/' + recipe.id : '');
@@ -40,18 +68,17 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) { setError('Give the recipe a name.'); return; }
-    const all = catInput.trim() ? [...cats, canonicalCategory(catInput)] : cats;
+    if (!title.trim()) { setError('Give the recipe a name.'); scrollTo(0, 0); return; }
     const saved = await saveRecipe({
       id: recipe?.id,
       title: title.trim(),
-      categories: [...new Set(all)],
-      servings: parseFloat(servings) || undefined,
+      categories: [...new Set(cats)],
+      servings: servings > 0 ? servings : undefined,
       time: time.trim() || undefined,
       favorite: recipe?.favorite,
       cookNext: recipe?.cookNext,
-      ingredients: lines(ing),
-      instructions: lines(ins),
+      ingredients: currentIng(),
+      instructions: currentIns(),
       notes: notes.trim() || undefined,
       source: source.trim() || undefined,
     });
@@ -59,6 +86,27 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
     if (recipe) goBack('recipe/' + saved.id);
     else replace('recipe/' + saved.id);
   };
+
+  // Rows editing helpers
+  const patchRow = (id: number, p: Partial<IngRow>) => setRows((rs) => rs.map((r) => (r.id === id ? ({ ...r, ...p } as IngRow) : r)));
+  const addRowAfter = (id: number | null, row: IngRow) => {
+    setRows((rs) => { const i = id === null ? rs.length - 1 : rs.findIndex((r) => r.id === id); const n = [...rs]; n.splice(i + 1, 0, row); return n; });
+    focusLater(`[data-row="${row.id}"]`);
+  };
+  const removeRow = (id: number) => setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.id !== id) : [emptyItem()]));
+  const moveRow = (id: number, d: -1 | 1) => setRows((rs) => {
+    const i = rs.findIndex((r) => r.id === id), j = i + d;
+    if (j < 0 || j >= rs.length) return rs;
+    const n = [...rs]; [n[i], n[j]] = [n[j], n[i]]; return n;
+  });
+  const addStepAfter = (id: number | null) => {
+    const s = { id: nextId(), text: '' };
+    setSteps((ss) => { const i = id === null ? ss.length - 1 : ss.findIndex((x) => x.id === id); const n = [...ss]; n.splice(i + 1, 0, s); return n; });
+    focusLater(`[data-step="${s.id}"]`);
+  };
+
+  const [th, tm] = parseTime(time) ?? [0, 0];
+  let stepNo = 0;
 
   return (
     <form className="page edit" onSubmit={save}>
@@ -69,39 +117,130 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
       </header>
       <div className="pad-x stack">
         {error && <p className="error">{error}</p>}
+        {shouting && (
+          <div className="banner flush row gap">
+            <span className="grow small">Parts of this recipe are in capitals.</span>
+            <button type="button" className="pill" onClick={unshout}>Make normal case</button>
+          </div>
+        )}
         <div className="title-row">
           <span className="tile tint" style={lookVars(look)}><Icon name={look.icon} /></span>
           <input id="title" className="field big" placeholder="Recipe name" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus={!recipe} />
         </div>
 
-        <div className="lbl">Categories <small>colour and icon come from the first one</small></div>
-        <div className="catpick">
-          {cats.map((c) => {
-            const l = categoryLook(c);
-            return <button type="button" key={c} className="tag tint" style={lookVars(l)} onClick={() => setCats(cats.filter((x) => x !== c))} title="Remove"><i><Icon name={l.icon} size={12} /></i>{c}<Icon name="x" size={12} /></button>;
-          })}
-          <input id="cat" className="catpick-input" list="cat-suggest" placeholder={cats.length ? 'Add another' : 'e.g. Dinner, Italian, Vegan'} value={catInput}
-            onChange={(e) => setCatInput(e.target.value)}
-            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ',') && catInput.trim()) { e.preventDefault(); addCat(catInput); } }}
-            onBlur={() => { if (catInput.trim()) addCat(catInput); }} />
-          <datalist id="cat-suggest">{suggestions.map((c) => <option key={c} value={c} />)}</datalist>
+        <div>
+          <div className="lbl">Categories <small>colour and icon come from the first one</small></div>
+          <div className="catpick">
+            {cats.map((c) => {
+              const l = categoryLook(c);
+              return <button type="button" key={c} className="tag tint" style={lookVars(l)} onClick={() => setCats(cats.filter((x) => x !== c))} title="Remove"><i><Icon name={l.icon} size={12} /></i>{c}<Icon name="x" size={12} /></button>;
+            })}
+            <button type="button" className="pill" onClick={() => setPicking(true)}><Icon name={cats.length ? 'plus' : 'tag'} size={13} />{cats.length ? 'Add' : 'Choose categories'}</button>
+          </div>
         </div>
 
-        <div className="row gap">
-          <label className="lbl grow">Time<input id="time" className="field" placeholder="e.g. 40 min" value={time} onChange={(e) => setTime(e.target.value)} /></label>
-          <label className="lbl grow">Servings<input id="servings" className="field" type="number" min="0" step="any" inputMode="decimal" value={servings} onChange={(e) => setServings(e.target.value)} /></label>
+        <div className="row gap wrap meta-edit">
+          <div className="lbl">Time
+            {timeAsText ? (
+              <span className="row gap"><input id="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} /><button type="button" className="link small" onClick={() => { setTime(''); setTimeAsText(false); }}>Use h/min</button></span>
+            ) : (
+              <span className="hm">
+                <input id="time-h" className="field" type="number" inputMode="numeric" min="0" placeholder="0" value={th || ''} onChange={(e) => setTime(formatTime(Math.max(0, +e.target.value || 0), tm))} aria-label="Hours" /><span>h</span>
+                <input id="time-m" className="field" type="number" inputMode="numeric" min="0" step="5" placeholder="0" value={tm || ''} onChange={(e) => setTime(formatTime(th, Math.max(0, +e.target.value || 0)))} aria-label="Minutes" /><span>min</span>
+              </span>
+            )}
+          </div>
+          <div className="lbl">Servings
+            <span className="stp big">
+              <button type="button" onClick={() => setServings((s) => Math.max(0, s - 1))} aria-label="Fewer servings"><Icon name="minus" size={13} /></button>
+              <input id="servings" type="number" inputMode="numeric" min="0" value={servings || ''} placeholder="–" onChange={(e) => setServings(Math.max(0, +e.target.value || 0))} aria-label="Servings" />
+              <button type="button" onClick={() => setServings((s) => s + 1)} aria-label="More servings"><Icon name="plus" size={13} /></button>
+            </span>
+          </div>
         </div>
-        <label className="lbl">Ingredients <small>one per line; start a line with # for a section, like “# Sauce”</small>
-          <textarea id="ing" className="field" rows={10} value={ing} onChange={(e) => setIng(e.target.value)} placeholder={'2 cups flour\n1 tsp salt\n# Topping\n2 tbsp sugar'} />
-        </label>
-        <label className="lbl">Steps <small>optional, one per line</small>
-          <textarea id="ins" className="field" rows={8} value={ins} onChange={(e) => setIns(e.target.value)} />
-        </label>
+
+        <div className="row edit-mode">
+          <span className="lbl">Ingredients and steps</span>
+          <div className="seg sm push" role="group" aria-label="Editor">
+            <button type="button" className={mode === 'rows' ? 'on' : ''} onClick={() => setMode('rows')}>Rows</button>
+            <button type="button" className={mode === 'text' ? 'on' : ''} onClick={() => setMode('text')}>Plain text</button>
+          </div>
+        </div>
+
+        {mode === 'text' ? (
+          <>
+            <label className="lbl">Ingredients <small>one per line; start a line with # for a section, like “# Sauce”</small>
+              <textarea id="ing" className="field" rows={10} value={ingText} onChange={(e) => setIngText(e.target.value)} placeholder={'2 cups flour\n1 tsp salt\n# Topping\n2 tbsp sugar'} />
+            </label>
+            <label className="lbl">Steps <small>optional, one per line</small>
+              <textarea id="ins" className="field" rows={8} value={insText} onChange={(e) => setInsText(e.target.value)} />
+            </label>
+          </>
+        ) : (
+          <>
+            <div className="lbl">Ingredients</div>
+            <datalist id="unit-list">{UNIT_OPTIONS.map((u) => <option key={u} value={u} />)}</datalist>
+            <div className="rows">
+              {rows.map((r, i) => r.kind === 'section' ? (
+                <div key={r.id} className="erow section">
+                  <input data-row={r.id} className="field" value={r.label} placeholder="Section, e.g. Sauce" onChange={(e) => patchRow(r.id, { label: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Section name" />
+                  <RowTools first={i === 0} last={i === rows.length - 1} onUp={() => moveRow(r.id, -1)} onDown={() => moveRow(r.id, 1)} onRemove={() => removeRow(r.id)} />
+                </div>
+              ) : (
+                <div key={r.id} className="erow">
+                  <input data-row={r.id} className="field qty" value={r.qty} placeholder="Qty" inputMode="decimal" onChange={(e) => patchRow(r.id, { qty: e.target.value })} aria-label="Quantity" />
+                  <input className="field unit" value={r.unit} placeholder="Unit" list="unit-list" onChange={(e) => patchRow(r.id, { unit: e.target.value })} aria-label="Unit" />
+                  <input className="field grow" value={r.label} placeholder="Ingredient" onChange={(e) => patchRow(r.id, { label: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Ingredient" />
+                  <RowTools first={i === 0} last={i === rows.length - 1} onUp={() => moveRow(r.id, -1)} onDown={() => moveRow(r.id, 1)} onRemove={() => removeRow(r.id)} />
+                </div>
+              ))}
+            </div>
+            <div className="row gap">
+              <button type="button" className="pill" onClick={() => addRowAfter(null, emptyItem())}><Icon name="plus" size={13} />Ingredient</button>
+              <button type="button" className="pill" onClick={() => addRowAfter(null, { id: nextId(), kind: 'section', label: '' })}><Icon name="plus" size={13} />Section</button>
+            </div>
+
+            <div className="lbl">Steps <small>a short line ending in “:” becomes a heading</small></div>
+            <div className="rows">
+              {steps.map((s, i) => {
+                const heading = s.text.trim().length < 48 && s.text.trim().endsWith(':');
+                if (!heading && s.text.trim()) stepNo++;
+                return (
+                  <div key={s.id} className="erow step">
+                    <i className={heading ? 'h' : ''}>{heading ? <Icon name="type" size={12} /> : s.text.trim() ? stepNo : '·'}</i>
+                    <textarea data-step={s.id} className="field grow" rows={Math.max(1, Math.ceil(s.text.length / 34))} value={s.text} placeholder={i === 0 ? 'First step' : 'Next step'}
+                      onChange={(e) => setSteps((ss) => ss.map((x) => (x.id === s.id ? { ...x, text: e.target.value.replace(/\n/g, ' ') } : x)))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStepAfter(s.id); } }} aria-label={`Step ${i + 1}`} />
+                    <RowTools first={i === 0} last={i === steps.length - 1}
+                      onUp={() => setSteps((ss) => { const n = [...ss]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}
+                      onDown={() => setSteps((ss) => { const n = [...ss]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}
+                      onRemove={() => setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== s.id) : [{ id: nextId(), text: '' }]))} />
+                  </div>
+                );
+              })}
+            </div>
+            <div><button type="button" className="pill" onClick={() => addStepAfter(null)}><Icon name="plus" size={13} />Step</button></div>
+          </>
+        )}
+
         <label className="lbl">Notes <small>optional; links work</small>
           <textarea id="notes" className="field" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
         <label className="lbl">Source link <small>optional</small><input id="source" className="field" type="url" value={source} onChange={(e) => setSource(e.target.value)} /></label>
       </div>
+      {picking && <CategoryPicker value={cats} used={used} onChange={setCats} onClose={() => setPicking(false)} />}
     </form>
+  );
+}
+
+function RowTools({ first, last, onUp, onDown, onRemove }: { first: boolean; last: boolean; onUp: () => void; onDown: () => void; onRemove: () => void }) {
+  return (
+    <span className="row-tools">
+      <button type="button" onClick={onUp} disabled={first} aria-label="Move up"><Icon name="chev" size={13} className="up" /></button>
+      <button type="button" onClick={onDown} disabled={last} aria-label="Move down"><Icon name="chev" size={13} className="down" /></button>
+      <button type="button" onClick={onRemove} aria-label="Remove"><Icon name="x" size={14} /></button>
+    </span>
   );
 }

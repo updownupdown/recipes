@@ -35,6 +35,20 @@ function shortAmount(a: string): string {
   return t.replace(/(\d+)\s+(\d\/\d)\b/g, (m, w, f) => (FRAC[f] ? w + FRAC[f] : m)).replace(/\b(\d\/\d)\b/g, (m) => FRAC[m] ?? m);
 }
 
+const GLYPH: Record<string, [string, string]> = {
+  '½': ['1', '2'], '⅓': ['1', '3'], '⅔': ['2', '3'], '¼': ['1', '4'], '¾': ['3', '4'], '⅕': ['1', '5'], '⅖': ['2', '5'],
+  '⅗': ['3', '5'], '⅘': ['4', '5'], '⅙': ['1', '6'], '⅚': ['5', '6'], '⅛': ['1', '8'], '⅜': ['3', '8'], '⅝': ['5', '8'], '⅞': ['7', '8'],
+};
+
+/** Amounts with large, readable fractions (the font's ½ ¼ glyphs are tiny). */
+function Amount({ text }: { text: string }) {
+  const parts = text.split(/([½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\b\d\/\d+\b)/);
+  return <>{parts.map((p, i) => {
+    const f = GLYPH[p] ?? (/^\d\/\d+$/.test(p) ? (p.split('/') as [string, string]) : undefined);
+    return f ? <span key={i} className="fr"><sup>{f[0]}</sup><span>⁄</span><sub>{f[1]}</sub></span> : p;
+  })}</>;
+}
+
 export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.ReactNode }) {
   const [factor, setFactor] = useState(1);
   const [cook, setCook] = useState(false);
@@ -97,7 +111,7 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
           const on = done.has(key);
           const cells = <>
               {cook && <span className="bx">{on && <Icon name="check" size={11} />}</span>}
-              <span className={'q' + (amt ? '' : ' none')}>{amt ? shortAmount(amt) : '–'}</span>
+              <span className={'q' + (amt ? '' : ' none')}>{amt ? <Amount text={shortAmount(amt)} /> : '–'}</span>
               <span className="tx">{rest}</span>
             </>;
             return cook
