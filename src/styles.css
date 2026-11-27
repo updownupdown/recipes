@@ -237,3 +237,18 @@ label.choice, label.btn { cursor: pointer; }
 .version-body { padding: 0 2px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .version-body p { margin: 0; }
 .diff { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.q { width: 4.9em; min-width: 0; }
+.q.none { color: var(--ln2); font-weight: 400; }
+.steps li { cursor: default; }
+.steps li.tap { cursor: pointer; }
+.ctl + .ctl { padding-top: 8px; }
+.cook { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--soft); color: var(--fg); font-weight: 600; font-size: 14px; }
+.cook.on { background: #ffe9a8; color: #6b4c00; }
+.menu-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mu); padding: 8px 10px 2px; }
+.mi.danger, .mi.danger .icon { color: var(--danger); }
+.photo { display: flex; justify-content: center; background: var(--soft); border-radius: var(--r); overflow: hidden; }
+.photo canvas { display: block; touch-action: none; cursor: crosshair; }
+.read-as { display: flex; flex-direction: column; gap: 6px; }
+.h5 { align-items: center; }
+.h5 .cook { height: 32px; font-size: 13px; padding: 0 12px; }
+.h5 + .awake-note { margin: -2px 20px 10px; }

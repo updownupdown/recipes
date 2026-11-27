@@ -9,7 +9,6 @@ import { RecipeBody } from './RecipeBody';
 import { AppMenu, BackButton } from './ui';
 
 export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Recipe[] }) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [msg, setMsg] = useState('');
   useEffect(() => { if (recipe) markViewed(recipe.id); }, [recipe?.id]);
   if (!recipe) return <p className="pad">This recipe isn't here. <a href="#/">Back to recipes</a></p>;
@@ -23,6 +22,12 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
     try { await navigator.clipboard.writeText(url); setMsg('Link copied'); } catch { prompt('Copy this link', url); }
   };
 
+  const remove = async () => {
+    if (!confirm(`Delete “${recipe.title}”?\n\nYou can bring it back from History and undo in the menu.`)) return;
+    await deleteRecipe(recipe.id);
+    goBack('');
+  };
+
   return (
     <div className="page">
       <header className="hd">
@@ -33,24 +38,15 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
           </button>
           <button className="ib flat" onClick={share} aria-label="Share"><Icon name="share" /></button>
           <a className="ib flat" href={`#/edit/${recipe.id}`} aria-label="Edit"><Icon name="edit" /></a>
-          <AppMenu recipes={recipes} />
+          <AppMenu recipes={recipes} actionsTitle="This recipe" actions={[
+            { label: 'Download as JSON', icon: 'download', onClick: () => download(slug(recipe.title) + '.json', toJSON([recipe]), 'application/json') },
+            { label: 'Download as text', icon: 'file', onClick: () => download(slug(recipe.title) + '.txt', toText([recipe]), 'text/plain') },
+            { label: 'Delete recipe', icon: 'trash', danger: true, onClick: remove },
+          ]} />
         </span>
       </header>
       {msg && <div className="toast" onAnimationEnd={() => setMsg('')}>{msg}</div>}
       <RecipeBody recipe={recipe} />
-      <footer className="recipe-foot">
-        <button className="pill" onClick={() => download(slug(recipe.title) + '.json', toJSON([recipe]), 'application/json')}><Icon name="download" size={13} />JSON</button>
-        <button className="pill" onClick={() => download(slug(recipe.title) + '.txt', toText([recipe]), 'text/plain')}><Icon name="file" size={13} />Text</button>
-        {confirmDelete ? (
-          <span className="row gap push">
-            <span className="small">Delete this recipe?</span>
-            <button className="pill danger" onClick={async () => { await deleteRecipe(recipe.id); goBack(''); }}>Delete</button>
-            <button className="pill" onClick={() => setConfirmDelete(false)}>Keep</button>
-          </span>
-        ) : (
-          <button className="pill danger push" onClick={() => setConfirmDelete(true)}><Icon name="trash" size={13} />Delete</button>
-        )}
-      </footer>
     </div>
   );
 }

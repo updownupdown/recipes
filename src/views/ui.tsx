@@ -61,7 +61,9 @@ function ago(t?: number) {
   return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
 }
 
-export function AppMenu({ recipes }: { recipes: Recipe[] }) {
+export interface MenuAction { label: string; icon: string; onClick: () => void; danger?: boolean }
+
+export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[]; actions?: MenuAction[]; actionsTitle?: string }) {
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState('');
   const s = useSyncState();
@@ -99,6 +101,15 @@ export function AppMenu({ recipes }: { recipes: Recipe[] }) {
                 ? <button className="mini" onClick={() => nav('settings')}>Connect</button>
                 : <button className="mini" onClick={sync} disabled={s.kind === 'syncing'}>Sync</button>}
             </div>
+            {actions && actions.length > 0 && (
+              <>
+                {actionsTitle && <div className="menu-label">{actionsTitle}</div>}
+                {actions.map((a) => (
+                  <button key={a.label} className={'mi' + (a.danger ? ' danger' : '')} onClick={() => { setOpen(false); a.onClick(); }}><Icon name={a.icon} />{a.label}</button>
+                ))}
+                <hr />
+              </>
+            )}
             <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
             <button className="mi" onClick={() => nav('settings#import')}><Icon name="upload" />Import recipes<small>JSON</small></button>
             <button className="mi" onClick={() => nav('settings#export')}><Icon name="download" />Export recipes<small>JSON, text, Doc</small></button>

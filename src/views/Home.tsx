@@ -16,7 +16,9 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
   const results = useMemo(() => (q.trim() ? searchRecipes(recipes, q) : []), [recipes, q]);
   const favs = recipes.filter((r) => r.favorite);
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const recent = recentIds().map((id) => byId.get(id)).filter((r): r is Recipe => !!r && !r.favorite).slice(0, 3);
+  const added = [...recipes].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
+  const addedIds = new Set(added.map((r) => r.id));
+  const recent = recentIds().map((id) => byId.get(id)).filter((r): r is Recipe => !!r && !r.favorite && !addedIds.has(r.id)).slice(0, 3);
   const cats = categoryCounts(recipes);
 
   return (
@@ -51,6 +53,13 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
             <section>
               <div className="sec"><b>Favorites</b>{favs.length > 3 && <a href="#/favorites">See all<Icon name="chev" size={13} /></a>}</div>
               <div className="cards">{favs.slice(0, 3).map((r) => <RecipeCard key={r.id} r={r} />)}</div>
+            </section>
+          )}
+
+          {added.length > 0 && (
+            <section>
+              <div className="sec"><b>Recently added</b>{recipes.length > 3 && <a href="#/all" onClick={() => ss.set('list:all:sort', JSON.stringify('new'))}>See all<Icon name="chev" size={13} /></a>}</div>
+              <div className="cards">{added.map((r) => <RecipeCard key={r.id} r={r} />)}</div>
             </section>
           )}
 

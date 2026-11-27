@@ -30,3 +30,9 @@ describe('quantity', () => {
     expect(scaleLine('1 1/2 cup rice', 2)).toBe('3 cup rice');
   });
 });
+
+import { scaleLine as sl2, splitAmount as sa2 } from './quantity';
+it('treats "1 or 2" as a range', () => {
+  expect(sa2('1 or 2 onions')).toEqual(['1 or 2', 'onions']);
+  expect(sl2('1 or 2 onions', 2)).toBe('2 or 4 onions');
+});

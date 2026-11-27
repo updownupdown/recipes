@@ -6,6 +6,7 @@ import { readerConfigured, recipeFromUrl } from '../webImport';
 import type { RecipeDraft } from '../types';
 import { RecipeEdit } from './RecipeEdit';
 import { BackButton } from './ui';
+import { PhotoReader } from './PhotoReader';
 
 type Mode = 'choose' | 'paste' | 'link' | 'photo' | 'form';
 
@@ -59,24 +60,6 @@ export function AddRecipe() {
       fetchLink(shared.url);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const readPhotos = async (files: File[]) => {
-    if (!files.length) return;
-    setError('');
-    setBusy({ label: 'Loading text recognition…', fraction: 0 });
-    try {
-      const { textFromPhotos } = await import('../ocr');
-      const t = await textFromPhotos(files, (label, fraction) => setBusy({ label, fraction }));
-      if (!t.trim()) throw new Error('No text found. Try a sharper, well-lit photo taken straight on.');
-      setText((prev) => (prev.trim() ? prev.trim() + '\n\n' : '') + t);
-      setFromPhoto(true);
-      setMode('paste');
-    } catch (e) {
-      setError((e as Error).message || 'Text recognition failed. Are you online for the first use?');
-    } finally {
-      setBusy(undefined);
-    }
-  };
 
   if (mode === 'form') return <RecipeEdit draft={draft} />;
 
@@ -138,43 +121,15 @@ export function AddRecipe() {
         </div>
       )}
 
-      {mode === 'photo' && (
-        <div className="pad-x stack">
-          {busy ? (
-            <div className="panel">
-              <div className="row gap"><Icon name="refresh" size={18} className="spin" /><b>{busy.label}</b></div>
-              <div className="bar"><i style={{ width: `${Math.round((busy.fraction ?? 0) * 100)}%` }} /></div>
-              <p className="small muted">This happens on your phone. Your photo isn't uploaded anywhere.</p>
-            </div>
-          ) : (
-            <>
-              <label className="choice">
-                <span className="tile soft"><Icon name="camera" /></span><span><b>Take a photo</b><small>Hold the page flat, in good light.</small></span>
-                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => readPhotos([...(e.target.files ?? [])])} />
-              </label>
-              <label className="choice">
-                <span className="tile soft"><Icon name="grid" /></span><span><b>Choose photos</b><small>Pick one or more, like two pages of a book.</small></span>
-                <input type="file" accept="image/*" multiple hidden onChange={(e) => readPhotos([...(e.target.files ?? [])])} />
-              </label>
-              <p className="muted small">The text is read on your phone, then you check it before saving. Printed pages work best; handwriting usually doesn't. The first use downloads about 7 MB, then it works offline too.</p>
-              {error && <p className="error">{error}</p>}
-            </>
-          )}
-        </div>
-      )}
+      {mode === 'photo' && <PhotoReader onDone={(t) => { setText(t); setFromPhoto(true); setMode('paste'); }} />}
 
       {mode === 'paste' && (
         <div className="pad-x stack">
-          {fromPhoto && <p className="small muted">Fix anything misread, and add "Ingredients" and "Instructions" headings if they're missing. Then continue.</p>}
+          {fromPhoto && <p className="small muted">Fix anything misread, especially fractions like ½ and ¼. Then continue.</p>}
           <textarea id="paste" className="field" rows={14} value={text} onChange={(e) => setText(e.target.value)} autoFocus={!fromPhoto}
             placeholder={'Banana bread\nServes 8\n\nIngredients\n3 ripe bananas\n1/3 cup melted butter\n\nInstructions\nPreheat oven to 350°F…'} />
           <div className="row gap">
             <button className="btn" disabled={!text.trim()} onClick={() => { setDraft(withGuess(parseRecipeText(text))); setMode('form'); }}>Continue</button>
-            {fromPhoto && (
-              <label className="btn ghost"><Icon name="camera" size={16} /> Add another photo
-                <input type="file" accept="image/*" hidden onChange={(e) => { setMode('photo'); readPhotos([...(e.target.files ?? [])]); }} />
-              </label>
-            )}
           </div>
         </div>
       )}
