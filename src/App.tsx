@@ -7,6 +7,7 @@ import { RecipeEdit } from './views/RecipeEdit';
 import { AddRecipe } from './views/AddRecipe';
 import { SharedRecipe } from './views/SharedRecipe';
 import { Settings } from './views/Settings';
+import { TimerBar } from './views/TimerBar';
 
 export function App() {
   const route = useHashRoute();
@@ -35,6 +36,7 @@ export function App() {
 
   return (
     <div className="app">
+      <TimerBar />
       {!online && <div className="offline">Offline. Everything still works, and changes sync later.</div>}
       {body}
     </div>

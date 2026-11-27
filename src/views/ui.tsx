@@ -3,6 +3,7 @@ import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { isSignedIn } from '../auth';
 import { go } from '../hooks';
+import { openSetup } from '../timer';
 import { syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
 
@@ -114,6 +115,7 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
             <button className="mi" onClick={() => nav('settings#import')}><Icon name="upload" />Import recipes<small>JSON</small></button>
             <button className="mi" onClick={() => nav('settings#export')}><Icon name="download" />Export recipes<small>JSON, text, Doc</small></button>
             <hr />
+            <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
             <button className="mi" onClick={surprise}><Icon name="shuffle" />Surprise me</button>
             <button className="mi" onClick={() => nav('settings#history')}><Icon name="clock" />History and undo</button>
             <button className="mi" onClick={() => nav('settings')}><Icon name="settings" />Settings</button>

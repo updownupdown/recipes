@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
+import { parseDuration, startFromStep } from '../timer';
 import { isStepHeading } from '../exporters';
 import { scaleLine, splitAmount } from '../quantity';
 import { convertLine, convertTemps, type UnitSystem } from '../units';
@@ -19,7 +20,13 @@ function Linkify({ text }: { text: string }) {
 function StepText({ text }: { text: string }) {
   const re = /(\d+(?:[.,]\d+)?(?:\s*(?:-|to)\s*\d+(?:[.,]\d+)?)?\s*(?:minutes?|mins?|hours?|hrs?|h)\b)/gi;
   const parts = text.split(re);
-  return <>{parts.map((p, i) => (i % 2 ? <span key={i} className="tm"><Icon name="timer" size={11} />{p}</span> : p))}</>;
+  return <>{parts.map((p, i) => {
+    if (!(i % 2)) return p;
+    const sec = parseDuration(p);
+    return sec
+      ? <button type="button" key={i} className="tm" onClick={(e) => { e.stopPropagation(); startFromStep(sec, p.trim()); }} title="Start a timer"><Icon name="timer" size={11} />{p}</button>
+      : <span key={i} className="tm"><Icon name="timer" size={11} />{p}</span>;
+  })}</>;
 }
 
 const SHORT: [RegExp, string][] = [

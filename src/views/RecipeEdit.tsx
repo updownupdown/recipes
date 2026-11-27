@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { fixCaps, hasAllCaps } from '../caps';
 import { allRecipes, saveRecipe } from '../db';
@@ -11,7 +11,7 @@ import { CategoryPicker } from './CategoryPicker';
 type Mode = 'rows' | 'text';
 const EMPTY: RecipeDraft = { title: '', categories: [], ingredients: [], instructions: [] };
 const MODE_KEY = 'edit_mode';
-const loadMode = (): Mode => { try { return localStorage.getItem(MODE_KEY) === 'text' ? 'text' : 'rows'; } catch { return 'rows'; } };
+const loadMode = (): Mode => { try { return localStorage.getItem(MODE_KEY) === 'rows' ? 'rows' : 'text'; } catch { return 'text'; } };
 const lines = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
 const toRows = (ing: string[]) => (ing.length ? ing.map(lineToRow) : [emptyItem()]);
 const toSteps = (ins: string[]): StepRow[] => (ins.length ? ins : ['']).map((text) => ({ id: nextId(), text }));
@@ -93,12 +93,16 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
     setRows((rs) => { const i = id === null ? rs.length - 1 : rs.findIndex((r) => r.id === id); const n = [...rs]; n.splice(i + 1, 0, row); return n; });
     focusLater(`[data-row="${row.id}"]`);
   };
-  const removeRow = (id: number) => setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.id !== id) : [emptyItem()]));
-  const moveRow = (id: number, d: -1 | 1) => setRows((rs) => {
-    const i = rs.findIndex((r) => r.id === id), j = i + d;
-    if (j < 0 || j >= rs.length) return rs;
-    const n = [...rs]; [n[i], n[j]] = [n[j], n[i]]; return n;
-  });
+  const removeRow = (r: IngRow) => {
+    if (rowToLine(r) && !confirm(`Remove “${rowToLine(r).replace(/^#\s*/, '')}”?`)) return;
+    setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : [emptyItem()]));
+  };
+  const removeStep = (st: StepRow) => {
+    if (st.text.trim() && !confirm('Remove this step?')) return;
+    setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== st.id) : [{ id: nextId(), text: '' }]));
+  };
+  const ingDrag = useDragReorder(setRows);
+  const stepDrag = useDragReorder(setSteps);
   const addStepAfter = (id: number | null) => {
     const s = { id: nextId(), text: '' };
     setSteps((ss) => { const i = id === null ? ss.length - 1 : ss.findIndex((x) => x.id === id); const n = [...ss]; n.splice(i + 1, 0, s); return n; });
@@ -140,7 +144,7 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
         </div>
 
         <div className="row gap wrap meta-edit">
-          <div className="lbl">Time
+          <div className="meta-field"><span className="meta-label">Time</span>
             {timeAsText ? (
               <span className="row gap"><input id="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} /><button type="button" className="link small" onClick={() => { setTime(''); setTimeAsText(false); }}>Use h/min</button></span>
             ) : (
@@ -150,7 +154,7 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
               </span>
             )}
           </div>
-          <div className="lbl">Servings
+          <div className="meta-field"><span className="meta-label">Servings</span>
             <span className="stp big">
               <button type="button" onClick={() => setServings((s) => Math.max(0, s - 1))} aria-label="Fewer servings"><Icon name="minus" size={13} /></button>
               <input id="servings" type="number" inputMode="numeric" min="0" value={servings || ''} placeholder="–" onChange={(e) => setServings(Math.max(0, +e.target.value || 0))} aria-label="Servings" />
@@ -162,8 +166,8 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
         <div className="row edit-mode">
           <span className="lbl">Ingredients and steps</span>
           <div className="seg sm push" role="group" aria-label="Editor">
-            <button type="button" className={mode === 'rows' ? 'on' : ''} onClick={() => setMode('rows')}>Rows</button>
             <button type="button" className={mode === 'text' ? 'on' : ''} onClick={() => setMode('text')}>Plain text</button>
+            <button type="button" className={mode === 'rows' ? 'on' : ''} onClick={() => setMode('rows')}>Rows</button>
           </div>
         </div>
 
@@ -180,20 +184,22 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
           <>
             <div className="lbl">Ingredients</div>
             <datalist id="unit-list">{UNIT_OPTIONS.map((u) => <option key={u} value={u} />)}</datalist>
-            <div className="rows">
+            <div className="rows" ref={ingDrag.list}>
               {rows.map((r, i) => r.kind === 'section' ? (
-                <div key={r.id} className="erow section">
+                <div key={r.id} data-idx={i} className={'erow section' + (ingDrag.dragging === i ? ' dragging' : '')}>
+                  <Grip {...ingDrag.handle(i)} />
                   <input data-row={r.id} className="field" value={r.label} placeholder="Section, e.g. Sauce" onChange={(e) => patchRow(r.id, { label: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Section name" />
-                  <RowTools first={i === 0} last={i === rows.length - 1} onUp={() => moveRow(r.id, -1)} onDown={() => moveRow(r.id, 1)} onRemove={() => removeRow(r.id)} />
+                  <Trash onClick={() => removeRow(r)} />
                 </div>
               ) : (
-                <div key={r.id} className="erow">
+                <div key={r.id} data-idx={i} className={'erow' + (ingDrag.dragging === i ? ' dragging' : '')}>
+                  <Grip {...ingDrag.handle(i)} />
                   <input data-row={r.id} className="field qty" value={r.qty} placeholder="Qty" inputMode="decimal" onChange={(e) => patchRow(r.id, { qty: e.target.value })} aria-label="Quantity" />
                   <input className="field unit" value={r.unit} placeholder="Unit" list="unit-list" onChange={(e) => patchRow(r.id, { unit: e.target.value })} aria-label="Unit" />
                   <input className="field grow" value={r.label} placeholder="Ingredient" onChange={(e) => patchRow(r.id, { label: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Ingredient" />
-                  <RowTools first={i === 0} last={i === rows.length - 1} onUp={() => moveRow(r.id, -1)} onDown={() => moveRow(r.id, 1)} onRemove={() => removeRow(r.id)} />
+                  <Trash onClick={() => removeRow(r)} />
                 </div>
               ))}
             </div>
@@ -203,20 +209,18 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
             </div>
 
             <div className="lbl">Steps <small>a short line ending in “:” becomes a heading</small></div>
-            <div className="rows">
+            <div className="rows" ref={stepDrag.list}>
               {steps.map((s, i) => {
                 const heading = s.text.trim().length < 48 && s.text.trim().endsWith(':');
                 if (!heading && s.text.trim()) stepNo++;
                 return (
-                  <div key={s.id} className="erow step">
+                  <div key={s.id} data-idx={i} className={'erow step' + (stepDrag.dragging === i ? ' dragging' : '')}>
+                    <Grip {...stepDrag.handle(i)} />
                     <i className={heading ? 'h' : ''}>{heading ? <Icon name="type" size={12} /> : s.text.trim() ? stepNo : '·'}</i>
                     <textarea data-step={s.id} className="field grow" rows={Math.max(1, Math.ceil(s.text.length / 34))} value={s.text} placeholder={i === 0 ? 'First step' : 'Next step'}
                       onChange={(e) => setSteps((ss) => ss.map((x) => (x.id === s.id ? { ...x, text: e.target.value.replace(/\n/g, ' ') } : x)))}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStepAfter(s.id); } }} aria-label={`Step ${i + 1}`} />
-                    <RowTools first={i === 0} last={i === steps.length - 1}
-                      onUp={() => setSteps((ss) => { const n = [...ss]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}
-                      onDown={() => setSteps((ss) => { const n = [...ss]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}
-                      onRemove={() => setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== s.id) : [{ id: nextId(), text: '' }]))} />
+                    <Trash onClick={() => removeStep(s)} />
                   </div>
                 );
               })}
@@ -235,12 +239,37 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
   );
 }
 
-function RowTools({ first, last, onUp, onDown, onRemove }: { first: boolean; last: boolean; onUp: () => void; onDown: () => void; onRemove: () => void }) {
-  return (
-    <span className="row-tools">
-      <button type="button" onClick={onUp} disabled={first} aria-label="Move up"><Icon name="chev" size={13} className="up" /></button>
-      <button type="button" onClick={onDown} disabled={last} aria-label="Move down"><Icon name="chev" size={13} className="down" /></button>
-      <button type="button" onClick={onRemove} aria-label="Remove"><Icon name="x" size={14} /></button>
-    </span>
-  );
+function Grip(props: React.HTMLAttributes<HTMLSpanElement>) {
+  return <span className="grip" aria-label="Drag to reorder" {...props}><Icon name="grip" size={16} /></span>;
+}
+
+function Trash({ onClick }: { onClick: () => void }) {
+  return <button type="button" className="trash" onClick={onClick} aria-label="Remove"><Icon name="trash" size={16} /></button>;
+}
+
+/** Drag-and-drop reordering by a handle; works with touch and mouse. Rows carry data-idx. */
+function useDragReorder<T>(setItems: React.Dispatch<React.SetStateAction<T[]>>) {
+  const list = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+  const cur = useRef<number | null>(null);
+  const handle = (i: number) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      cur.current = i; setDragging(i);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (cur.current === null || !list.current) return;
+      const rowsEls = [...list.current.querySelectorAll<HTMLElement>(':scope > [data-idx]')];
+      let to = rowsEls.findIndex((el) => { const b = el.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
+      if (to === -1) to = rowsEls.length - 1;
+      const from = cur.current;
+      if (to === from) return;
+      setItems((items) => { const n = [...items]; const [it] = n.splice(from, 1); n.splice(to, 0, it); return n; });
+      cur.current = to; setDragging(to);
+    },
+    onPointerUp: () => { cur.current = null; setDragging(null); },
+    onPointerCancel: () => { cur.current = null; setDragging(null); },
+  });
+  return { list, dragging, handle };
 }
