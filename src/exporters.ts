@@ -1,0 +1,59 @@
+import type { Recipe } from './types';
+
+export function toJSON(recipes: Recipe[]): string {
+  return JSON.stringify({ app: 'MyRecipes', version: 1, exportedAt: new Date().toISOString(), recipes }, null, 2);
+}
+
+export function fromJSON(text: string): Recipe[] {
+  const data = JSON.parse(text);
+  const list: unknown[] = Array.isArray(data) ? data : Array.isArray(data.recipes) ? data.recipes : [data];
+  const now = Date.now();
+  return list.map((x) => {
+    const r = x as Partial<Recipe>;
+    if (!r.title) throw new Error('A recipe in this file has no title.');
+    return {
+      id: r.id ?? crypto.randomUUID(),
+      title: r.title,
+      categories: r.categories ?? [],
+      servings: r.servings,
+      ingredients: r.ingredients ?? [],
+      instructions: r.instructions ?? [],
+      notes: r.notes,
+      source: r.source,
+      createdAt: r.createdAt ?? now,
+      updatedAt: r.updatedAt ?? now,
+      deleted: r.deleted,
+    };
+  });
+}
+
+export function toText(recipes: Recipe[]): string {
+  return recipes
+    .map((r) => {
+      const out = [r.title.toUpperCase()];
+      const meta = [r.categories.join(', '), r.servings ? `Serves ${r.servings}` : '', r.source ?? ''].filter(Boolean);
+      if (meta.length) out.push(meta.join(' · '));
+      out.push('', 'INGREDIENTS');
+      for (const l of r.ingredients) out.push(l.startsWith('#') ? `\n${l.slice(1).trim()}:` : `- ${l}`);
+      if (r.instructions.length) {
+        out.push('', 'INSTRUCTIONS');
+        r.instructions.forEach((l, i) => out.push(`${i + 1}. ${l}`));
+      }
+      if (r.notes) out.push('', 'NOTES', r.notes);
+      return out.join('\n');
+    })
+    .join('\n\n' + '-'.repeat(40) + '\n\n');
+}
+
+export function download(filename: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function slug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'recipe';
+}
