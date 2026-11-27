@@ -10,6 +10,9 @@ export interface Recipe {
   /** Free text; URLs become links. */
   notes?: string;
   source?: string;
+  /** Free text like "40 min" or "2 h". */
+  time?: string;
+  favorite?: boolean;
   createdAt: number;
   updatedAt: number;
   /** Tombstone: set when deleted so the delete can sync. */

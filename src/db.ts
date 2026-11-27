@@ -51,3 +51,17 @@ export async function mergeRecipes(incoming: Recipe[]): Promise<number> {
   });
   return changed;
 }
+
+export async function setFavorite(id: string, favorite: boolean): Promise<void> {
+  const r = await db.recipes.get(id);
+  if (!r) return;
+  await db.recipes.put({ ...r, favorite, updatedAt: Date.now() });
+}
+
+const RECENT = 'recent_ids';
+export function recentIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT) || '[]'); } catch { return []; }
+}
+export function markViewed(id: string) {
+  try { localStorage.setItem(RECENT, JSON.stringify([id, ...recentIds().filter((x) => x !== id)].slice(0, 12))); } catch { /* ignore */ }
+}

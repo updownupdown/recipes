@@ -3,6 +3,7 @@ import { db, saveRecipe } from '../db';
 import { go } from '../hooks';
 import { decodeRecipe } from '../share';
 import { RecipeBody } from './RecipeBody';
+import { Icon } from '../icons';
 
 type Decoded = Awaited<ReturnType<typeof decodeRecipe>>;
 
@@ -24,13 +25,13 @@ export function SharedRecipe({ data }: { data: string }) {
   };
 
   return (
-    <>
-      <nav className="bar">
-        <a href="#/">MyRecipes</a>
-        <button className="btn" onClick={save}>{have ? 'Save a copy' : 'Save to my recipes'}</button>
-      </nav>
-      <p className="banner">Shared recipe. You can read it here without saving.</p>
+    <div className="page">
+      <header className="hd">
+        <a className="ib flat" href="#/" aria-label="MyRecipes"><Icon name="book" /></a>
+        <span className="hd-right"><button className="btn" onClick={save}><Icon name="plus" size={16} />{have ? 'Save a copy' : 'Save to my recipes'}</button></span>
+      </header>
+      <p className="banner">Someone shared this recipe with you. Read it here, or save it to your own MyRecipes.</p>
       <RecipeBody recipe={{ ...r, categories: r.categories ?? [], ingredients: r.ingredients ?? [], instructions: r.instructions ?? [] }} />
-    </>
+    </div>
   );
 }

@@ -20,6 +20,8 @@ export function fromJSON(text: string): Recipe[] {
       instructions: r.instructions ?? [],
       notes: r.notes,
       source: r.source,
+      time: r.time,
+      favorite: r.favorite,
       createdAt: r.createdAt ?? now,
       updatedAt: r.updatedAt ?? now,
       deleted: r.deleted,

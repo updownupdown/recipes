@@ -1,0 +1,76 @@
+import { useMemo, useState } from 'react';
+import { recentIds } from '../db';
+import { Icon } from '../icons';
+import { categoryCounts, searchRecipes } from '../search';
+import type { Recipe } from '../types';
+import { CategoryTile, RecipeCard, SearchBox, TopBar } from './ui';
+
+const ss = {
+  get: (k: string) => { try { return sessionStorage.getItem(k) ?? ''; } catch { return ''; } },
+  set: (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } },
+};
+
+export function Home({ recipes }: { recipes: Recipe[] }) {
+  const [q, setQ] = useState(() => ss.get('home_q'));
+  const setQuery = (v: string) => { setQ(v); ss.set('home_q', v); };
+  const results = useMemo(() => (q.trim() ? searchRecipes(recipes, q) : []), [recipes, q]);
+  const favs = recipes.filter((r) => r.favorite);
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const recent = recentIds().map((id) => byId.get(id)).filter((r): r is Recipe => !!r && !r.favorite).slice(0, 3);
+  const cats = categoryCounts(recipes);
+
+  return (
+    <div className="page">
+      <TopBar title="MyRecipes" recipes={recipes} />
+      <div className="pad-x">
+        <SearchBox value={q} onChange={setQuery} placeholder={`Search ${recipes.length} recipes or ingredients`} />
+      </div>
+
+      {q.trim() ? (
+        <section>
+          <div className="sec"><b>{results.length} result{results.length === 1 ? '' : 's'}</b></div>
+          <div className="cards">{results.map((r) => <RecipeCard key={r.id} r={r} />)}</div>
+          {results.length === 0 && <p className="muted pad-x">Nothing matches “{q}”. Try an ingredient, like “lentils”.</p>}
+        </section>
+      ) : recipes.length === 0 ? (
+        <div className="empty">
+          <span className="empty-ic"><Icon name="book" size={26} /></span>
+          <h2>Your recipe box is empty</h2>
+          <p className="muted">Add a recipe, or import your JSON file from the menu.</p>
+          <div className="row gap center"><a className="btn" href="#/add"><Icon name="plus" size={16} />Add a recipe</a><a className="btn ghost" href="#/settings#import">Import</a></div>
+        </div>
+      ) : (
+        <>
+          <nav className="qa">
+            <a href="#/favorites"><Icon name="heart" /><b>Favorites</b><small>{favs.length ? `${favs.length} saved` : 'none yet'}</small></a>
+            <a href="#/all"><Icon name="list" /><b>All recipes</b><small>{recipes.length}, A to Z</small></a>
+            <a href="#/add" className="dark"><Icon name="plus" /><b>Add</b><small>type or paste</small></a>
+          </nav>
+
+          {favs.length > 0 && (
+            <section>
+              <div className="sec"><b>Favorites</b>{favs.length > 3 && <a href="#/favorites">See all<Icon name="chev" size={13} /></a>}</div>
+              <div className="cards">{favs.slice(0, 3).map((r) => <RecipeCard key={r.id} r={r} />)}</div>
+            </section>
+          )}
+
+          {recent.length > 0 && (
+            <section>
+              <div className="sec"><b>Recently viewed</b></div>
+              <div className="cards">{recent.map((r) => <RecipeCard key={r.id} r={r} />)}</div>
+            </section>
+          )}
+
+          {cats.length > 0 && (
+            <section>
+              <div className="sec"><b>Categories</b><span className="muted small">{cats.length}</span></div>
+              <div className="cats">
+                {cats.map(([c, n]) => <CategoryTile key={c} name={c} count={n} href={`#/c/${encodeURIComponent(c)}`} />)}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
