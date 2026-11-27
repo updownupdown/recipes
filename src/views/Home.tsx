@@ -1,3 +1,4 @@
+import { HUES, lookVars, type Look } from '../categories';
 import { useMemo, useState } from 'react';
 import { recentIds } from '../db';
 import { Icon } from '../icons';
@@ -45,9 +46,9 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
       ) : (
         <>
           <nav className="qa">
-            <a href="#/favorites"><Icon name="heart" /><b>Favorites</b><small>{favs.length ? `${favs.length} saved` : 'none yet'}</small></a>
-            <a href="#/all"><Icon name="list" /><b>All recipes</b><small>{recipes.length}, A to Z</small></a>
-            <a href="#/add" className="dark"><Icon name="plus" /><b>Add</b><small>link or text</small></a>
+            <a href="#/favorites" className="solid" style={lookVars({ hue: HUES.pink } as Look)}><Icon name="heart" size={22} /><b>Favorites</b></a>
+            <a href="#/all" className="solid" style={lookVars({ hue: HUES.indigo } as Look)}><Icon name="list" size={22} /><b>All</b></a>
+            <a href="#/add" className="solid" style={lookVars({ hue: HUES.green } as Look)}><Icon name="plus" size={22} /><b>Add</b></a>
           </nav>
 
           <section>

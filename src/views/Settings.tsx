@@ -6,7 +6,9 @@ import { download, fromJSON, toHTML, toJSON, toText } from '../exporters';
 import { Icon } from '../icons';
 import { markSignedOut, syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
-import { BackButton, RecipeTile, SyncBadge } from './ui';
+import { RecipeTile, SyncBadge } from './ui';
+import { goBack, replace } from '../hooks';
+import { categoryCounts } from '../search';
 import { RecentlyDeleted, VersionHistory } from './History';
 
 export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: string }) {
@@ -22,7 +24,22 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
   const label = picked.size ? `${picked.size} selected` : `all ${recipes.length}`;
   const stamp = new Date().toISOString().slice(0, 10);
 
-  useEffect(() => { if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: 'start' }); }, [anchor]);
+  const tab: Tab = anchor === 'import' || anchor === 'export' || anchor === 'data' ? 'data' : anchor === 'history' || anchor === 'deleted' ? 'history' : 'sync';
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => { body.current?.scrollTo(0, 0); }, [tab]);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') goBack(''); };
+    addEventListener('keydown', esc);
+    document.body.style.overflow = 'hidden';
+    return () => { removeEventListener('keydown', esc); document.body.style.overflow = ''; };
+  }, []);
+  const close = () => goBack('');
+  const stats = [
+    [recipes.length, 'recipes'],
+    [recipes.filter((r) => r.favorite).length, 'favorites'],
+    [categoryCounts(recipes).length, 'categories'],
+    [recipes.filter((r) => r.cookNext).length, 'to cook next'],
+  ] as const;
 
   const connect = async () => {
     setMsg('');
@@ -58,14 +75,25 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
   const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   return (
-    <div className="page">
-      <header className="hd">
-        <BackButton />
-        <h1 className="small">Settings</h1>
-      </header>
-      <div className="pad-x stack">
+    <div className="modal-wrap" role="dialog" aria-modal="true" aria-label="Settings">
+      <div className="dim" onClick={close} />
+      <div className="modal settings">
+        <div className="modal-head">
+          <b>Settings</b>
+          <button type="button" className="ib flat" onClick={close} aria-label="Close settings"><Icon name="x" /></button>
+        </div>
+        <div className="tabs" role="tablist">
+          {TABS.map(([id, name]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => { setMsg(''); replace('settings#' + id); }}>{name}</button>
+          ))}
+        </div>
+      <div className="modal-body stack" ref={body}>
         {msg && <p className="banner flush">{msg}</p>}
 
+        {tab === 'sync' && <>
+        <div className="stats">
+          {stats.map(([n, l]) => <div key={l}><b>{n}</b><small>{l}</small></div>)}
+        </div>
         <section className="panel" id="sync">
           <div className="panel-head"><span className="tile soft"><Icon name="cloud" /></span><span><b>Google Drive sync</b><small>{connected ? `Signed in${signedInEmail() ? ` as ${signedInEmail()}` : ''}` : 'Keep your phone and computer in sync'}</small></span></div>
           {connected ? (
@@ -78,8 +106,15 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
           )}
         </section>
 
-        <VersionHistory connected={connected} onMessage={(m) => { setMsg(m); scrollTo(0, 0); }} />
-        <RecentlyDeleted onMessage={(m) => { setMsg(m); scrollTo(0, 0); }} />
+        <p className="muted small center">MyRecipes · your recipes stay on your device and in your own Google Drive. <a href="./privacy.html">Privacy</a></p>
+        </>}
+
+        {tab === 'history' && <>
+        <VersionHistory connected={connected} onMessage={(m) => { setMsg(m); body.current?.scrollTo(0, 0); }} />
+        <RecentlyDeleted onMessage={(m) => { setMsg(m); body.current?.scrollTo(0, 0); }} />
+        </>}
+
+        {tab === 'data' && <>
 
         <section className="panel" id="import">
           <div className="panel-head"><span className="tile soft"><Icon name="upload" /></span><span><b>Import</b><small>MyRecipes JSON files. Existing recipes are updated, not duplicated.</small></span></div>
@@ -106,9 +141,12 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
             </div>
           )}
         </section>
-
-        <p className="muted small center">MyRecipes · your recipes stay on your device and in your own Google Drive. <a href="./privacy.html">Privacy</a></p>
+        </>}
+      </div>
       </div>
     </div>
   );
 }
+
+type Tab = 'sync' | 'data' | 'history';
+const TABS: [Tab, string][] = [['sync', 'Sync'], ['data', 'Import & export'], ['history', 'History']];

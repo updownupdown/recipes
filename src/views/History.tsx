@@ -71,9 +71,9 @@ export function VersionHistory({ connected, onMessage }: { connected: boolean; o
     <section className="panel" id="history">
       <div className="panel-head"><span className="tile soft"><Icon name="clock" /></span><span><b>Version history</b><small>Every sync saves a version in your Drive. Restore any of them.</small></span></div>
       {!connected ? (
-        <p className="small muted">Connect Google Drive above to keep a version history.</p>
+        <p className="small muted">Connect Google Drive on the Sync tab to keep a version history.</p>
       ) : !revs ? (
-        <div><button className="btn ghost" onClick={load} disabled={busy === 'list'}>{busy === 'list' ? 'Loading…' : 'Show versions'}</button></div>
+        <div><button className="pill" onClick={load} disabled={busy === 'list'}>{busy === 'list' ? 'Loading…' : 'Show versions'}</button></div>
       ) : (
         <div className="versions">
           {revs.length === 0 && <p className="small muted">No versions yet.</p>}
@@ -121,7 +121,11 @@ export function RecentlyDeleted({ onMessage }: { onMessage: (m: string) => void 
     const sub = liveQuery(() => deletedRecipes()).subscribe({ next: setList });
     return () => sub.unsubscribe();
   }, []);
-  if (!list.length) return null;
+  if (!list.length) return (
+    <section className="panel" id="deleted">
+      <div className="panel-head"><span className="tile soft"><Icon name="trash" /></span><span><b>Recently deleted</b><small>Nothing deleted lately.</small></span></div>
+    </section>
+  );
   return (
     <section className="panel" id="deleted">
       <div className="panel-head"><span className="tile soft"><Icon name="trash" /></span><span><b>Recently deleted</b><small>Tap Restore to bring a recipe back.</small></span></div>

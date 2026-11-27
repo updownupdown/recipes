@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHashRoute, useRecipes } from './hooks';
 import { Home } from './views/Home';
 import { AllRecipes } from './views/AllRecipes';
@@ -11,6 +11,7 @@ import { TimerBar } from './views/TimerBar';
 
 export function App() {
   const route = useHashRoute();
+  const under = useRef<string[]>([]);
   const recipes = useRecipes();
   const [online, setOnline] = useState(navigator.onLine);
   useEffect(() => {
@@ -22,16 +23,20 @@ export function App() {
 
   const [rawPage = '', arg] = route;
   const [page, anchor] = rawPage.split('#');
+  // Settings opens as a pop-up over the page you were on.
+  const isSettings = page === 'settings' || page === 'data';
+  if (!isSettings) under.current = route;
+  const [upPage = '', upArg] = isSettings ? under.current : route;
+  const base = upPage.split('#')[0];
   let body;
-  if (page === 'r' && arg) body = <SharedRecipe data={arg} />;
+  if (base === 'r' && upArg) body = <SharedRecipe data={upArg} />;
   else if (!recipes) body = <p className="muted pad">Loading…</p>;
-  else if (page === 'recipe' && arg) body = <RecipeView key={arg} recipe={recipes.find((r) => r.id === arg)} recipes={recipes} />;
-  else if (page === 'edit') body = <RecipeEdit key={arg ?? 'new'} recipe={arg ? recipes.find((r) => r.id === arg) : undefined} />;
-  else if (page === 'add') body = <AddRecipe />;
-  else if (page === 'all') body = <AllRecipes key="all" recipes={recipes} />;
-  else if (page === 'favorites') body = <AllRecipes key="fav" recipes={recipes} favoritesOnly />;
-  else if (page === 'c' && arg) body = <AllRecipes key={'c' + arg} recipes={recipes} category={decodeURIComponent(arg)} />;
-  else if (page === 'settings' || page === 'data') body = <Settings recipes={recipes} anchor={anchor} />;
+  else if (base === 'recipe' && upArg) body = <RecipeView key={upArg} recipe={recipes.find((r) => r.id === upArg)} recipes={recipes} />;
+  else if (base === 'edit') body = <RecipeEdit key={upArg ?? 'new'} recipe={upArg ? recipes.find((r) => r.id === upArg) : undefined} />;
+  else if (base === 'add') body = <AddRecipe />;
+  else if (base === 'all') body = <AllRecipes key="all" recipes={recipes} />;
+  else if (base === 'favorites') body = <AllRecipes key="fav" recipes={recipes} favoritesOnly />;
+  else if (base === 'c' && upArg) body = <AllRecipes key={'c' + upArg} recipes={recipes} category={decodeURIComponent(upArg)} />;
   else body = <Home recipes={recipes} />;
 
   return (
@@ -39,6 +44,7 @@ export function App() {
       <TimerBar />
       {!online && <div className="offline">Offline. Everything still works, and changes sync later.</div>}
       {body}
+      {isSettings && recipes && <Settings recipes={recipes} anchor={anchor} />}
     </div>
   );
 }

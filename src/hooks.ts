@@ -35,7 +35,9 @@ export function useHashRoute(): string[] {
   useEffect(() => {
     const on = () => {
       const y = onHashChange();
-      setParts(read());
+      const next = read();
+      setParts(next);
+      if (/^(settings|data)\b/.test(next[0] ?? '')) return; // a pop-up: leave the page under it where it is
       // Restore after React has rendered the page.
       requestAnimationFrame(() => requestAnimationFrame(() => scrollTo(0, y ?? 0)));
     };

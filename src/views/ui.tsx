@@ -112,13 +112,12 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
               </>
             )}
             <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
-            <button className="mi" onClick={() => nav('settings#import')}><Icon name="upload" />Import recipes<small>JSON</small></button>
-            <button className="mi" onClick={() => nav('settings#export')}><Icon name="download" />Export recipes<small>JSON, text, Doc</small></button>
-            <hr />
             <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
             <button className="mi" onClick={surprise}><Icon name="shuffle" />Surprise me</button>
-            <button className="mi" onClick={() => nav('settings#history')}><Icon name="clock" />History and undo</button>
-            <button className="mi" onClick={() => nav('settings')}><Icon name="settings" />Settings</button>
+            <div className="menu-label"><Icon name="settings" size={12} />Settings</div>
+            <button className="mi sub" onClick={() => nav('settings#sync')}><Icon name="cloud" />Sync and stats<Icon name="chev" size={14} /></button>
+            <button className="mi sub" onClick={() => nav('settings#data')}><Icon name="upload" />Import and export<Icon name="chev" size={14} /></button>
+            <button className="mi sub" onClick={() => nav('settings#history')}><Icon name="clock" />History and undo<Icon name="chev" size={14} /></button>
           </div>
         </>
       )}
