@@ -82,3 +82,41 @@ export function mergeInto(keep: Recipe, drop: Recipe): RecipeDraft {
     time: keep.time ?? drop.time,
   };
 }
+
+/** Words of `a` marked as changed when they aren't in `b` (longest-common-subsequence diff). */
+export function wordDiff(a: string, b: string): { text: string; changed: boolean }[] {
+  const A = a.split(/(\s+)/).filter((w) => w !== ''), B = b.split(/\s+/).filter(Boolean);
+  const words = A.filter((w) => !/^\s+$/.test(w));
+  const norm = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  const n = words.length, m = B.length;
+  const L: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    L[i][j] = norm(words[i]) === norm(B[j]) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const keep = new Set<number>();
+  for (let i = 0, j = 0; i < n && j < m;) {
+    if (norm(words[i]) === norm(B[j])) { keep.add(i); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+  }
+  const out: { text: string; changed: boolean }[] = [];
+  let wi = 0;
+  for (const tok of A) {
+    const changed = /^\s+$/.test(tok) ? false : !keep.has(wi++);
+    const last = out[out.length - 1];
+    if (last && (last.changed === changed || /^\s+$/.test(tok))) last.text += tok;
+    else out.push({ text: tok, changed });
+  }
+  return out;
+}
+
+/** Steps of `a` whose wording differs from `b`, each paired with its closest step in `b`. */
+export function changedSteps(a: string[], b: string[]): { n: number; text: string; other?: string }[] {
+  const key = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const bs = new Set(b.map(key));
+  const out: { n: number; text: string; other?: string }[] = [];
+  a.forEach((s, i) => {
+    if (bs.has(key(s))) return;
+    let best: string | undefined, score = 0;
+    for (const o of b) { const sc = jaccard(new Set(words(s)), new Set(words(o))); if (sc > score) { score = sc; best = o; } }
+    out.push({ n: i + 1, text: s, other: score >= 0.3 ? best : undefined });
+  });
+  return out;
+}

@@ -4,9 +4,17 @@ import { allRecipes } from './db';
 import type { Recipe } from './types';
 
 /* Navigation. Each history entry gets a depth, so Back can tell whether the previous page is
-   inside the app (go back to it, keeping its scroll position) or not (go home instead). */
+   inside the app (go back to it, keeping its scroll position) or not (go home instead).
+   Going Home rewinds to the first entry instead of adding one, so Home always starts a fresh trail:
+   Home > A > Home > B, then Back, lands on Home (not A), and Back again leaves the app. */
 let depth = typeof history.state?.depth === 'number' ? history.state.depth : 0;
 let replacing = false;
+let homing = false;
+const isHome = () => read().length === 0;
+addEventListener('popstate', () => {
+  if (typeof history.state?.depth === 'number') depth = history.state.depth;
+  if (homing && depth === 0 && isHome()) homing = false; // landed on Home (no hash change needed)
+});
 const scrolls = new Map<number, number>();
 if (typeof history.state?.depth !== 'number') history.replaceState({ depth }, '');
 addEventListener('scroll', () => scrolls.set(depth, scrollY), { passive: true });
@@ -20,7 +28,18 @@ function onHashChange(): number | undefined {
   }
   if (st && typeof st.depth === 'number') {
     depth = st.depth; // back or forward to a page we've seen
+    if (homing && depth === 0) {
+      homing = false;
+      if (!isHome()) { replace(''); return 0; } // the app was opened on another page: swap it for Home
+    }
     return scrolls.get(depth) ?? 0;
+  }
+  if (isHome() && depth > 0) {
+    // A link to Home: rewind to the first entry rather than stacking Home on top.
+    history.replaceState({ depth: depth + 1 }, '');
+    homing = true;
+    history.go(-(depth + 1));
+    return 0;
   }
   depth += 1;
   history.replaceState({ depth }, '');
@@ -58,6 +77,12 @@ export function replace(path: string) {
   if (location.hash === target) return;
   replacing = true;
   location.replace(target);
+}
+
+/** Home, starting a fresh trail (see the note at the top). */
+export function goHome() {
+  if (depth > 0) { homing = true; history.go(-depth); }
+  else if (!isHome()) replace('');
 }
 
 /** Back to the previous page in the app, or to `fallback` when the app was opened on this page. */

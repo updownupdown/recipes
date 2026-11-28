@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ask } from '../ask';
 import { deleteRecipe, markViewed, setCookNext, setFavorite } from '../db';
 import { download, slug, toJSON, toText } from '../exporters';
-import { replace } from '../hooks';
+import { goBack } from '../hooks';
 import { Icon } from '../icons';
 import { shareUrl } from '../share';
 import type { Recipe } from '../types';
@@ -26,7 +26,7 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
   const remove = async () => {
     if (!(await ask({ title: `Delete “${recipe.title}”?`, body: 'You can bring it back from Settings › History.', yes: 'Delete', danger: true }))) return;
     await deleteRecipe(recipe.id);
-    replace('');
+    goBack('');
   };
 
   return (

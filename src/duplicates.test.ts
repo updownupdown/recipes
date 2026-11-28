@@ -32,3 +32,11 @@ it('merges extras into the kept version', () => {
   expect(mergeInto(keep, drop)).toMatchObject({ id: '1', categories: ['Soup', 'Mains'], favorite: true, servings: 4, notes: 'Freezes well\n\nFrom Mom' });
   expect(onlyIn(['1 onion', '2 carrots'], ['1 Onion.'])).toEqual(['2 carrots']);
 });
+
+import { changedSteps, wordDiff } from './duplicates';
+it('spells out wording differences', () => {
+  expect(wordDiff('Bake for 20 minutes until golden', 'Bake for 25 minutes')).toEqual([
+    { text: 'Bake for ', changed: false }, { text: '20 ', changed: true }, { text: 'minutes ', changed: false }, { text: 'until golden', changed: true },
+  ]);
+  expect(changedSteps(['Mix well.', 'Bake for 20 minutes.'], ['Mix well.', 'Bake for 25 minutes.'])).toEqual([{ n: 2, text: 'Bake for 20 minutes.', other: 'Bake for 25 minutes.' }]);
+});

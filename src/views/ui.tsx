@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { isSignedIn } from '../auth';
-import { go } from '../hooks';
+import { go, goBack } from '../hooks';
 import { answer, useAsk } from '../ask';
 import { openSetup } from '../timer';
 import { syncNow, useSyncState } from '../sync';
@@ -129,9 +129,9 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
   );
 }
 
-/** Always goes to the home screen (the phone's own Back button still steps back through pages). */
-export function BackButton(_: { fallback?: string }) {
-  return <button type="button" className="ib flat" onClick={() => go('')} aria-label="Home"><Icon name="home" /></button>;
+/** Back to the previous page (or Home when there isn't one in the app). */
+export function BackButton({ fallback }: { fallback?: string }) {
+  return <button type="button" className="ib flat" onClick={() => goBack(fallback ?? '')} aria-label="Back"><Icon name="back" /></button>;
 }
 
 export function TopBar({ title, back, recipes, extra, logo }: { title?: string; back?: string; recipes: Recipe[]; extra?: React.ReactNode; logo?: boolean }) {
