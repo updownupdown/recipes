@@ -75,6 +75,9 @@ export function splitAmount(line: string): [string, string] {
   if (u) {
     amount += ' ' + u[0].trim();
     rest = rest.slice(u[0].length);
+    // "700g to 1kg": keep the second amount and its unit with the first.
+    const second = rest.match(new RegExp(`^\\s*(?:-|–|to|or)\\s*${NUM}\\s*(?:kg|g|ml|l|oz|lbs?|cups?|tbsp|tsp)\\b\\.?`, 'i'));
+    if (second) { amount += ' ' + second[0].trim(); rest = rest.slice(second[0].length); }
   }
   return [amount, rest.trim()];
 }

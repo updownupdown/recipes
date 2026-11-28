@@ -479,3 +479,8 @@ details.dup-fold[open] .dup-fold-body { margin-top: 8px; }
 .modal.preview .modal-body { padding: 0 0 24px; }
 .modal.preview .rh { padding-top: 0; }
 .dup-pick { cursor: pointer; }
+
+.cat-row { display: flex; align-items: flex-start; gap: 12px; margin-top: 8px; }
+.cat-row .cat-links { margin-top: 0; flex: 1; min-width: 0; }
+.serves { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--mu); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.mt:empty { display: none; }

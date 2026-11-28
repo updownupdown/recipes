@@ -8,6 +8,8 @@ import { RecipeCard, SearchBox, TopBar } from './ui';
 
 type Sort = 'az' | 'new';
 
+const AZ = new Intl.Collator(undefined, { sensitivity: 'base', ignorePunctuation: true, numeric: true });
+
 export function AllRecipes({ recipes, favoritesOnly: favStart, category }: { recipes: Recipe[]; favoritesOnly?: boolean; category?: string }) {
   const k = 'list:' + (category ?? (favStart ? 'fav' : 'all')) + ':';
   const [q, setQ] = useSessionState(k + 'q', '');
@@ -22,13 +24,15 @@ export function AllRecipes({ recipes, favoritesOnly: favStart, category }: { rec
   let list = category ? recipes.filter((r) => r.categories.includes(category)) : recipes;
   if (favOnly) list = list.filter((r) => r.favorite);
   if (cats.size) list = list.filter((r) => r.categories.some((c) => cats.has(c)));
-  list = q.trim() ? searchRecipes(list, q) : [...list].sort(sort === 'az' ? (a, b) => a.title.localeCompare(b.title) : (a, b) => b.createdAt - a.createdAt);
+  list = q.trim() ? searchRecipes(list, q) : [...list].sort(sort === 'az' ? (a, b) => AZ.compare(a.title, b.title) : (a, b) => b.createdAt - a.createdAt);
 
   // A to Z headers only when browsing alphabetically.
   const groups: [string, Recipe[]][] = [];
   if (sort === 'az' && !q.trim()) {
     for (const r of list) {
-      const L = /[a-z]/i.test(r.title[0]) ? r.title[0].toUpperCase() : '#';
+      // Group by the first letter, ignoring quotes and other punctuation ('"Chinese" Beef' goes under C).
+      const first = r.title.normalize('NFD').replace(/[^\p{L}\p{N}]/gu, '')[0] ?? '';
+      const L = /[a-z]/i.test(first) ? first.toUpperCase() : '#';
       if (groups.at(-1)?.[0] !== L) groups.push([L, []]);
       groups.at(-1)![1].push(r);
     }

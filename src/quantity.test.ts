@@ -37,3 +37,7 @@ it('treats "1 or 2" as a range', () => {
   expect(sa2('1 or 2 onions')).toEqual(['1 or 2', 'onions']);
   expect(sl2('1 or 2 onions', 2)).toBe('2 or 4 onions');
 });
+
+it('keeps a range with units on both ends together', () => {
+  expect(splitAmount('700g to 1kg ground pork')).toEqual(['700 g to 1kg', 'ground pork']);
+});
