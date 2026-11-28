@@ -19,6 +19,7 @@ const P: Record<string, string> = {
   check: '<path d="M20 6 9 17l-5-5"/>',
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
   grip: '<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',
+  merge: '<path d="M6 4v4a6 6 0 0 0 6 6 6 6 0 0 1 6 6"/><path d="M18 4v4a6 6 0 0 1-6 6"/><path d="M15 17l3 3 3-3"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   play: '<path d="M7 4.5v15l12-7.5Z"/>',
   bookmark: '<path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/>',

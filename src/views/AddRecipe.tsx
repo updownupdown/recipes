@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons';
 import { parseRecipes, parseRecipeText } from '../parse';
-import { saveRecipe } from '../db';
+import { allRecipes, saveRecipe } from '../db';
+import { existingMatch } from '../duplicates';
 import { replace } from '../hooks';
 import { guessCategory } from '../categories';
 import { fixCaps } from '../caps';
 import { readerConfigured, recipeFromUrl } from '../webImport';
-import type { RecipeDraft } from '../types';
+import type { Recipe, RecipeDraft } from '../types';
 import { RecipeEdit } from './RecipeEdit';
 import { BackButton } from './ui';
 
@@ -36,7 +37,10 @@ export function AddRecipe() {
   const [text, setText] = useState(shared?.text ?? '');
   const [link, setLink] = useState(shared?.url ?? '');
   const [draft, setDraft] = useState<RecipeDraft>();
-  const [many, setMany] = useState<RecipeDraft[]>([]);
+  const [many, setMany] = useState<{ d: RecipeDraft; dup?: Recipe; on: boolean }[]>([]);
+  const [similar, setSimilar] = useState<Recipe>();
+  // Opens the editor with a draft, noting when a saved recipe looks the same.
+  const review = async (d: RecipeDraft) => { setSimilar(existingMatch(d, await allRecipes())); setDraft(d); setMode('form'); };
   const [busy, setBusy] = useState<{ label: string; fraction?: number }>();
   const [error, setError] = useState('');
   const autoFetched = useRef(false);
@@ -47,8 +51,7 @@ export function AddRecipe() {
     setError('');
     setBusy({ label: 'Reading the recipe…' });
     try {
-      setDraft(await recipeFromUrl(url));
-      setMode('form');
+      await review(await recipeFromUrl(url));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -63,19 +66,24 @@ export function AddRecipe() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (mode === 'form') return <RecipeEdit draft={draft} />;
+  if (mode === 'form') return <RecipeEdit draft={draft} similar={similar} />;
 
   const back = mode === 'choose' ? undefined : () => { setMode(mode === 'many' ? 'paste' : 'choose'); setError(''); };
   const titles: Record<Mode, string> = { choose: 'Add a recipe', paste: 'Paste text', link: 'From a web link', form: '', many: `${many.length} recipes found` };
-  const readPaste = () => {
+  const readPaste = async () => {
     const found = parseRecipes(text).map((d) => withGuess(fixCaps(d)));
-    if (found.length > 1) { setMany(found); setMode('many'); return; }
-    setDraft(found[0] ?? withGuess(fixCaps(parseRecipeText(text))));
-    setMode('form');
+    if (found.length > 1) {
+      const saved = await allRecipes();
+      setMany(found.map((d) => { const dup = existingMatch(d, saved); return { d, dup, on: !dup }; }));
+      setMode('many');
+      return;
+    }
+    await review(found[0] ?? withGuess(fixCaps(parseRecipeText(text))));
   };
+  const chosen = many.filter((m) => m.on);
   const saveAll = async () => {
     setBusy({ label: 'Saving…' });
-    for (const d of many) await saveRecipe(d);
+    for (const m of chosen) await saveRecipe(m.d);
     setBusy(undefined);
     replace('all');
   };
@@ -143,15 +151,16 @@ export function AddRecipe() {
       )}
       {mode === 'many' && (
         <div className="pad-x stack">
-          <p className="muted small">Check the list, then save them all. You can edit any of them afterwards.</p>
+          <p className="muted small">Untick any you don’t want. Ones that look like recipes you already have start unticked. You can edit them all afterwards.</p>
           <div className="found">
-            {many.map((d, i) => (
-              <div key={i} className="found-row">
-                <span className="grow"><b>{d.title}</b><small>{d.ingredients.length} ingredients · {d.instructions.length} steps{d.servings ? ` · serves ${d.servings}` : ''}{d.categories[0] ? ` · ${d.categories[0]}` : ''}</small></span>
-              </div>
+            {many.map(({ d, dup, on }, i) => (
+              <label key={i} className={'found-row' + (on ? '' : ' off')}>
+                <input type="checkbox" checked={on} onChange={() => setMany((ms) => ms.map((m, j) => (j === i ? { ...m, on: !m.on } : m)))} />
+                <span className="grow"><b>{d.title}</b><small>{d.ingredients.length} ingredients · {d.instructions.length} steps{d.servings ? ` · serves ${d.servings}` : ''}{d.categories[0] ? ` · ${d.categories[0]}` : ''}</small>{dup && <small className="found-dup">Already saved as “{dup.title}”</small>}</span>
+              </label>
             ))}
           </div>
-          <button className="btn block" onClick={saveAll} disabled={!!busy}>{busy ? busy.label : `Save all ${many.length}`}</button>
+          <button className="btn block" onClick={saveAll} disabled={!!busy || !chosen.length}>{busy ? busy.label : chosen.length === many.length ? `Save all ${many.length}` : `Save ${chosen.length} of ${many.length}`}</button>
         </div>
       )}
     </div>

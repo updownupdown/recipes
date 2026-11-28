@@ -8,6 +8,7 @@ import { AddRecipe } from './views/AddRecipe';
 import { SharedRecipe } from './views/SharedRecipe';
 import { Settings } from './views/Settings';
 import { TimerBar } from './views/TimerBar';
+import { Duplicates } from './views/Duplicates';
 
 export function App() {
   const route = useHashRoute();
@@ -34,6 +35,7 @@ export function App() {
   else if (base === 'recipe' && upArg) body = <RecipeView key={upArg} recipe={recipes.find((r) => r.id === upArg)} recipes={recipes} />;
   else if (base === 'edit') body = <RecipeEdit key={upArg ?? 'new'} recipe={upArg ? recipes.find((r) => r.id === upArg) : undefined} />;
   else if (base === 'add') body = <AddRecipe />;
+  else if (base === 'duplicates') body = <Duplicates recipes={recipes} />;
   else if (base === 'all') body = <AllRecipes key="all" recipes={recipes} />;
   else if (base === 'favorites') body = <AllRecipes key="fav" recipes={recipes} favoritesOnly />;
   else if (base === 'c' && upArg) body = <AllRecipes key={'c' + upArg} recipes={recipes} category={decodeURIComponent(upArg)} />;

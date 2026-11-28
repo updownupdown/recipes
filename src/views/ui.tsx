@@ -13,20 +13,22 @@ export function RecipeTile({ r, size = 38 }: { r: Pick<Recipe, 'title' | 'catego
 }
 
 export function RecipeCard({ r }: { r: Recipe }) {
-  const sub = [r.categories.slice(0, 2).join(', ')].filter(Boolean);
+  const cats = r.categories.slice(0, 3).join(', ');
+  const flags = !!r.cookNext || !!r.favorite;
   return (
     <a className="card" href={`#/recipe/${r.id}`}>
       <RecipeTile r={r} />
       <span className="card-body">
         <span className="card-title">{r.title}</span>
-        {(sub.length > 0 || r.time) && (
+        {(cats || flags) && (
           <span className="card-meta">
-            {sub[0] && <span>{sub[0]}</span>}
-            {r.time && <span><Icon name="clock" size={12} />{r.time}</span>}
+            {r.cookNext && <Icon name="bookmark" size={12} className="flag next" />}
+            {r.favorite && <Icon name="heart" size={12} className="flag fav" />}
+            {cats && <span className="card-cats">{cats}</span>}
           </span>
         )}
       </span>
-      <span className={'card-end' + (r.favorite ? ' fav' : '')}><Icon name={r.favorite ? 'heart' : 'chev'} size={15} /></span>
+      <span className="card-end"><Icon name="chev" size={15} /></span>
     </a>
   );
 }
@@ -114,6 +116,7 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
             <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
             <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
             <button className="mi" onClick={surprise}><Icon name="shuffle" />Surprise me</button>
+            <button className="mi" onClick={() => nav('duplicates')}><Icon name="merge" />Merge duplicates</button>
             <div className="menu-label"><Icon name="settings" size={12} />Settings</div>
             <button className="mi sub" onClick={() => nav('settings#sync')}><Icon name="cloud" />Sync and stats<Icon name="chev" size={14} /></button>
             <button className="mi sub" onClick={() => nav('settings#data')}><Icon name="upload" />Import and export<Icon name="chev" size={14} /></button>

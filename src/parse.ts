@@ -11,6 +11,9 @@ const NOTES = /^(notes?|cook'?s notes?|tips?|variations?|to serve|serving sugges
 const META = /^(prep(?:aration)? time|cook(?:ing)? time|total time|time|serves|servings?|yield|makes|portions?|source|from|adapted from|course|cuisine|category|categories|keywords?|calories)$/i;
 const SERVES = /\b(?:serves|servings?|yield|yields|makes|portions?|feeds)\b\s*:?\s*(?:about\s+)?(\d+)/i;
 const URL_RE = /https?:\/\/[^\s)>\]]+/;
+// Page furniture that comes along when copying from recipe sites.
+const JUNK = /^(advertisement|ad|sponsored|print(?: recipe)?|pin(?: (?:it|recipe))?|save(?: recipe)?|saved|jump to (?:recipe|video)|rate this recipe|share(?: this)?|email|tweet|cook mode|prevent (?:your )?screen from going dark|did you make (?:this|it)\b.*|tried this recipe\b.*|leave a (?:comment|review)\b.*|\d+ (?:reviews?|ratings?|comments?)|[★☆]+.*|\d(?:\.\d)? from \d+ votes?|scale|[123]x(?: ?[123]x)*|us customary|metric|imperial|watch (?:the )?video|video|course|cuisine|keywords?|author|equipment|nutrition(?: facts| information)?|per serving)$/i;
+const SKIP = /^(nutrition(?: facts| information)?|equipment|reviews?|comments?|related recipes|you (?:may|might) also like|more recipes)$/i;
 const RULE = /^\s*(?:-{3,}|\*{3,}|_{3,}|={3,})\s*$/;
 
 /** Strips Markdown decoration: "## **Ingredients:**" -> "Ingredients:". */
@@ -90,14 +93,15 @@ export function parseRecipeText(text: string): RecipeDraft {
   const ingredients: string[] = [];
   const instructions: string[] = [];
   const notes: string[] = [];
-  let mode: 'pre' | 'ing' | 'ins' | 'notes' = 'pre';
+  let mode: 'pre' | 'ing' | 'ins' | 'notes' | 'skip' = 'pre';
   const pre: string[] = [];
   let lastStepNumbered = false;
 
   for (const raw of lines) {
     if (!raw.trim() || RULE.test(raw)) continue;
     const h = heading(raw);
-    if (h && ING.test(h)) { mode = 'ing'; continue; }
+    if (h && SKIP.test(h)) { mode = 'skip'; continue; }
+    if (h && (ING.test(h) || /^ingredients?\s+(?:for|to make)\b/i.test(h))) { servings ??= servingsFrom(h.replace(/for/i, 'serves')); mode = 'ing'; continue; }
     if (h && INS.test(h)) { mode = 'ins'; continue; }
     if (h && NOTES.test(h)) { mode = 'notes'; continue; }
 
@@ -119,7 +123,9 @@ export function parseRecipeText(text: string): RecipeDraft {
       }
     }
 
+    if (mode === 'skip') continue;
     const line = plain(raw);
+    if (JUNK.test(line.replace(/[:.!]$/, ''))) continue;
     if (!servings && line.length < 40 && mode !== 'ins') {
       const sv = servingsFrom(line);
       if (sv) { servings = sv; continue; }
@@ -154,7 +160,9 @@ export function parseRecipeText(text: string): RecipeDraft {
     } else notes.push(line);
   }
 
-  const title = (pre.shift() ?? 'Untitled recipe').replace(/^recipe\s*:\s*/i, '');
+  let title = pre.shift() ?? 'Untitled recipe';
+  const inTitle = title.match(/\s*\((?:serves|makes|for)\s+(\d+)[^)]*\)\s*$/i);
+  if (inTitle) { servings ??= parseInt(inTitle[1]); title = title.slice(0, inTitle.index); }
   // No headings found: guess. Lines starting with an amount are ingredients, long sentences are steps.
   if (!ingredients.length && !instructions.length && pre.length) {
     for (const l of pre.splice(0)) {
@@ -165,7 +173,7 @@ export function parseRecipeText(text: string): RecipeDraft {
     }
   }
   const extra = pre.filter((l) => l !== source);
-  return {
+  return tidyDraft({
     title,
     categories: [],
     servings,
@@ -174,5 +182,25 @@ export function parseRecipeText(text: string): RecipeDraft {
     instructions,
     notes: [...extra, ...notes].join('\n') || undefined,
     source,
-  };
+  });
+}
+
+/** Final clean-up for any imported recipe (pasted, from a file or from a web page). */
+export function tidyDraft(d: RecipeDraft): RecipeDraft {
+  const title = d.title
+    .replace(/^recipe\s*:\s*/i, '')
+    .replace(/\s+(?:\||::)\s+[^|]{2,40}$/, '') // "Best Chili | Some Site"
+    .replace(/\s+[-–—]\s+\S+\.(?:com|net|org|co\.uk|ca)$/i, '') // "Best Chili - site.com"
+    .replace(/\s+recipe$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Untitled recipe';
+  const tidy = (l: string) => l.replace(/^[▢□☐◻✓✔]\s*/, '').replace(/\s+([,.;:!?])/g, '$1').replace(/\s+/g, ' ').trim();
+  const dedupe = (list: string[]) => list.map(tidy).filter((l, i, a) => l && !JUNK.test(l) && l !== a[i - 1]);
+  let instructions = dedupe(d.instructions);
+  // One paragraph holding "1. … 2. … 3. …" becomes separate steps.
+  if (instructions.length <= 2) {
+    const split = instructions.flatMap((s) => (s.match(/(?:^|\s)\d{1,2}[.)]\s/g)?.length ?? 0) >= 2 ? s.split(/(?:^|\s)\d{1,2}[.)]\s+/).map((x) => x.trim()).filter(Boolean) : [s]);
+    if (split.length > instructions.length) instructions = split;
+  }
+  return { ...d, title, ingredients: dedupe(d.ingredients).filter((l) => l !== '#'), instructions };
 }

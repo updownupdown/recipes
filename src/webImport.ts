@@ -1,6 +1,6 @@
 import { RECIPE_READER_URL } from './config';
 import { canonicalCategory, categoryLook, guessCategory } from './categories';
-import { parseRecipeText } from './parse';
+import { parseRecipeText, tidyDraft } from './parse';
 import { fixCaps } from './caps';
 import type { RecipeDraft } from './types';
 
@@ -137,7 +137,7 @@ export function recipeFromJsonLd(blocks: string[], url: string): RecipeDraft | u
     .map(canonicalCategory);
   const categories = [...new Set(fromSite)].slice(0, 3);
   const desc = txt(r.description);
-  return {
+  return tidyDraft({
     title,
     categories: categories.length ? categories : guessed(title, ingredients.join(' ')),
     servings: servings(r.recipeYield),
@@ -146,5 +146,5 @@ export function recipeFromJsonLd(blocks: string[], url: string): RecipeDraft | u
     instructions,
     notes: desc || undefined,
     source: url,
-  };
+  });
 }

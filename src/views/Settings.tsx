@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isSignedIn, requestToken, signedInEmail, signOut } from '../auth';
-import { mergeRecipes, saveRecipe } from '../db';
+import { allRecipes, mergeRecipes, saveRecipe } from '../db';
+import { existingMatch } from '../duplicates';
 import { parseRecipes } from '../parse';
 import { fixCaps } from '../caps';
 import { guessCategory } from '../categories';
@@ -53,7 +54,7 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     try {
-      let total = 0, seen = 0;
+      let total = 0, seen = 0, skipped = 0;
       for (const f of files) {
         const body = await f.text();
         if (/^\s*[[{]/.test(body)) {
@@ -62,7 +63,10 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
           total += await mergeRecipes(list);
         } else {
           // Plain text or Markdown: one or many recipes.
-          const drafts = parseRecipes(body).map(fixCaps);
+          const saved = await allRecipes();
+          const all = parseRecipes(body).map(fixCaps);
+          const drafts = all.filter((d) => !existingMatch(d, saved));
+          skipped += all.length - drafts.length;
           for (const d of drafts) {
             const g = d.categories.length ? undefined : guessCategory(d.title, d.ingredients.join(' '));
             await saveRecipe(g ? { ...d, categories: [g.name] } : d);
@@ -71,7 +75,7 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
         }
       }
       const same = seen - total;
-      setMsg(`Imported ${total} recipe${total === 1 ? '' : 's'}.` + (same ? ` ${same} ${same === 1 ? 'was' : 'were'} already up to date.` : ''));
+      setMsg(`Imported ${total} recipe${total === 1 ? '' : 's'}.` + (same ? ` ${same} ${same === 1 ? 'was' : 'were'} already up to date.` : '') + (skipped ? ` Skipped ${skipped} you already have.` : ''));
     } catch (e) {
       setMsg(`Couldn't import: ${(e as Error).message} Check that it's a MyRecipes JSON file or a text file of recipes.`);
     }

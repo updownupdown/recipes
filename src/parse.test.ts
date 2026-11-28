@@ -72,3 +72,24 @@ Note: keeps for 3 days.`);
 it('keeps a single pasted recipe as one', () => {
   expect(parseRecipes('Toast\nIngredients\n1 slice bread\nSteps\nToast it.')).toHaveLength(1);
 });
+
+it('drops page clutter copied from recipe sites', () => {
+  const r = parseRecipeText(`Best Chili Recipe | Tasty Site
+Jump to Recipe
+Print Recipe
+★★★★★ 4.8 from 120 votes
+Ingredients for 6 people
+▢ 1 lb beef
+▢ 1 onion
+Advertisement
+Instructions
+1. Brown the beef. 2. Add the onion. 3. Simmer for 1 hour.
+Nutrition
+Calories: 400kcal
+Protein: 30g`);
+  expect(r.title).toBe('Best Chili');
+  expect(r.servings).toBe(6);
+  expect(r.ingredients).toEqual(['1 lb beef', '1 onion']);
+  expect(r.instructions).toEqual(['Brown the beef.', 'Add the onion.', 'Simmer for 1 hour.']);
+  expect(r.notes).toBeUndefined();
+});

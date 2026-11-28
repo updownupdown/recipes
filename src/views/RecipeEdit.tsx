@@ -20,7 +20,7 @@ const toSteps = (ins: string[]): StepRow[] => (ins.length ? ins : ['']).map((tex
 /** Focus a field after React has rendered it. */
 const focusLater = (sel: string) => setTimeout(() => (document.querySelector(sel) as HTMLElement | null)?.focus(), 30);
 
-export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeDraft }) {
+export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?: RecipeDraft; similar?: Recipe }) {
   const start = recipe ?? draft ?? EMPTY;
   const [mode, setModeState] = useState<Mode>(loadMode);
   const [title, setTitle] = useState(start.title);
@@ -124,6 +124,12 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
       </header>
       <div className="pad-x stack">
         {error && <p className="error">{error}</p>}
+        {similar && (
+          <div className="banner flush warn row gap">
+            <span className="grow small">You already have a recipe like this: <b>{similar.title}</b>.</span>
+            <a className="pill" href={`#/recipe/${similar.id}`}>Open it</a>
+          </div>
+        )}
         {shouting && (
           <div className="banner flush row gap">
             <span className="grow small">Parts of this recipe are in capitals.</span>
