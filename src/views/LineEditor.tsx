@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { lineToRow, nextId, rowToLine, singularUnit, UNIT_OPTIONS, UNIT_RE } from '../editRows';
-import { LEAD } from '../quantity';
+import { LEAD, parseNumber } from '../quantity';
 import { Icon } from '../icons';
 
 /* "Smart lines": plain text you type or paste one line at a time, with amounts, units, sections and
@@ -128,6 +128,12 @@ export function LineEditor({ kind, lines, onChange, placeholder }: { kind: Kind;
   };
   const row = cur && kind === 'ing' && !isSection(cur.text) ? lineToRow(cur.text) : undefined;
   const unit = row?.kind === 'item' ? singularUnit(row.unit) : '';
+  const [qtyOpen, setQtyOpen] = useState(false);
+  useEffect(() => { if (active === null) setQtyOpen(false); }, [active]);
+  const setQty = (q: string) => {
+    if (!cur || row?.kind !== 'item') return;
+    patch(rowToLine({ ...row, qty: q }));
+  };
   const setUnit = (u: string) => {
     if (!cur || row?.kind !== 'item') return;
     patch(rowToLine({ ...row, unit: u }));
@@ -161,7 +167,14 @@ export function LineEditor({ kind, lines, onChange, placeholder }: { kind: Kind;
       }}><Icon name="plus" size={14} />{kind === 'ing' ? 'Add ingredient' : 'Add step'}</button>
 
       {cur && createPortal(
-        <Toolbar>
+        <Toolbar above={qtyOpen && row?.kind === 'item' ? <QtyPicker qty={row.qty} onPick={setQty} onClose={() => setQtyOpen(false)} /> : null}>
+          <Tb on={() => move(-1)} label="Move up" disabled={idx(cur.id) === 0}><Icon name="chev" size={15} className="up" /></Tb>
+          <Tb on={() => move(1)} label="Move down" disabled={idx(cur.id) === lines.length - 1}><Icon name="chev" size={15} className="down" /></Tb>
+          {kind === 'ing' && (
+            <Tb on={() => setQtyOpen((o) => !o)} label="Quantity" cls="sl-qty" pressed={qtyOpen} disabled={row?.kind !== 'item'}>
+              {row?.kind === 'item' && row.qty ? row.qty : 'qty'}
+            </Tb>
+          )}
           {kind === 'ing' && (
             <label className={'sl-tb sl-unit' + (row?.kind === 'item' ? '' : ' off')}>
               <span>{unit || 'unit'}</span><Icon name="chev" size={12} />
@@ -171,11 +184,10 @@ export function LineEditor({ kind, lines, onChange, placeholder }: { kind: Kind;
               </select>
             </label>
           )}
+          <span className="sl-gap" />
           <Tb on={toggleSection} label={kind === 'ing' ? 'Section' : 'Heading'} pressed={kind === 'ing' ? isSection(cur.text) : isHeading(cur.text)}>
-            <Icon name="type" size={14} />{kind === 'ing' ? 'Section' : 'Heading'}
+            <Icon name="type" size={14} /><span className="sl-tbt">{kind === 'ing' ? 'Section' : 'Heading'}</span>
           </Tb>
-          <Tb on={() => move(-1)} label="Move up" disabled={idx(cur.id) === 0}><Icon name="chev" size={15} className="up" /></Tb>
-          <Tb on={() => move(1)} label="Move down" disabled={idx(cur.id) === lines.length - 1}><Icon name="chev" size={15} className="down" /></Tb>
           {undo
             ? <Tb on={restore} label="Undo remove" cls="sl-undo">Undo</Tb>
             : <Tb on={remove} label="Remove line" cls="sl-del"><Icon name="trash" size={15} /></Tb>}
@@ -192,8 +204,37 @@ function Tb({ on, label, children, disabled, pressed, cls = '' }: { on: () => vo
     onPointerDown={(e) => e.preventDefault()} onClick={on}>{children}</button>;
 }
 
+const WHOLES = [0, 1, 2, 3, 4, 5, 6];
+const FRACS: [number, string, string][] = [[0, '–', ''], [1 / 4, '¼', '1/4'], [1 / 3, '⅓', '1/3'], [1 / 2, '½', '1/2'], [2 / 3, '⅔', '2/3'], [3 / 4, '¾', '3/4']];
+
+/** Whole number + fraction in two taps; − and + step by one. Writes plain fractions ("1 1/2"). */
+function QtyPicker({ qty, onPick, onClose }: { qty: string; onPick: (q: string) => void; onClose: () => void }) {
+  const n = parseNumber(qty);
+  const whole = Math.floor(n + 0.01);
+  const fi = FRACS.findIndex(([v]) => Math.abs(v - (n - whole)) < 0.04);
+  const frac = fi >= 0 ? FRACS[fi] : FRACS[0];
+  const out = (w: number, f: string) => (w > 0 && f ? `${w} ${f}` : w > 0 ? String(w) : f);
+  const keep = (e: React.PointerEvent) => e.preventDefault();
+  return (
+    <div className="sl-qp" onPointerDown={keep}>
+      <div className="sl-qp-top">
+        <button type="button" className="sl-tb" aria-label="One less" disabled={whole < 1} onClick={() => onPick(out(whole - 1, frac[2]))}><Icon name="minus" size={15} /></button>
+        <b>{qty || 'no amount'}</b>
+        <button type="button" className="sl-tb" aria-label="One more" onClick={() => onPick(out(whole + 1, frac[2]))}><Icon name="plus" size={15} /></button>
+        <button type="button" className="sl-tb sl-qp-done" onClick={onClose}>Done</button>
+      </div>
+      <div className="sl-qp-row" aria-label="Whole number">
+        {WHOLES.map((w) => <button type="button" key={w} className={'sl-qc' + (w === whole && n > 0 ? ' on' : '')} onClick={() => onPick(out(w, frac[2]))}>{w}</button>)}
+      </div>
+      <div className="sl-qp-row" aria-label="Fraction">
+        {FRACS.map(([, glyph, plain]) => <button type="button" key={glyph} className={'sl-qc' + (fi >= 0 && frac[2] === plain && n > 0 ? ' on' : '')} aria-label={plain || 'no fraction'} onClick={() => onPick(out(whole, plain))}>{glyph}</button>)}
+      </div>
+    </div>
+  );
+}
+
 /** Sits at the bottom of the visible screen, just above the phone keyboard when it is open. */
-function Toolbar({ children }: { children: React.ReactNode }) {
+function Toolbar({ children, above }: { children: React.ReactNode; above?: React.ReactNode }) {
   const [bottom, setBottom] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
@@ -203,7 +244,12 @@ function Toolbar({ children }: { children: React.ReactNode }) {
     vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
     return () => { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); };
   }, []);
-  return <div className="sl-bar" style={{ bottom }} role="toolbar" aria-label="Line tools">{children}</div>;
+  return (
+    <div className="sl-bar" style={{ bottom }}>
+      {above}
+      <div className="sl-bar-row" role="toolbar" aria-label="Line tools">{children}</div>
+    </div>
+  );
 }
 
 /** Drag-and-drop reordering by a handle; works with touch and mouse. Rows carry data-idx. */
