@@ -11,7 +11,7 @@ import { Icon } from '../icons';
 import { markSignedOut, syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
 import { RecipeTile, SyncBadge } from './ui';
-import { goBack, replace } from '../hooks';
+import { go, goBack, replace } from '../hooks';
 import { categoryCounts } from '../search';
 import { RecentlyDeleted, VersionHistory } from './History';
 
@@ -163,6 +163,11 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
               ))}
             </div>
           )}
+        </section>
+
+        <section className="panel" id="duplicates">
+          <div className="panel-head"><span className="tile soft"><Icon name="merge" /></span><span><b>Merge duplicates</b><small>Find recipes that look alike and combine them.</small></span></div>
+          <div className="row gap"><button className="pill" onClick={() => go('duplicates')}><Icon name="merge" size={13} />Find duplicates</button></div>
         </section>
         </>}
       </div>

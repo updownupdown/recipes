@@ -66,9 +66,9 @@ function ago(t?: number) {
   return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
 }
 
-export interface MenuAction { label: string; icon: string; onClick: () => void; danger?: boolean }
+export interface MenuAction { label: string; short?: string; icon: string; onClick: () => void; danger?: boolean }
 
-export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[]; actions?: MenuAction[]; actionsTitle?: string }) {
+export function AppMenu({ actions, actionsTitle }: { actions?: MenuAction[]; actionsTitle?: string }) {
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState('');
   const s = useSyncState();
@@ -83,7 +83,6 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
   }, [open]);
   const nav = (path: string) => { setOpen(false); go(path); };
   const sync = () => { setErr(''); syncNow(true).catch((e: Error) => setErr(e.message)); };
-  const surprise = () => { if (recipes.length) nav('recipe/' + recipes[Math.floor(Math.random() * recipes.length)].id); };
 
   const status = s.kind === 'off' || !isSignedIn() ? 'Not connected'
     : s.kind === 'syncing' ? 'Syncing…'
@@ -99,33 +98,32 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
         <>
           <div className="dim" onPointerDown={(e) => { e.preventDefault(); setOpen(false); }} onClick={() => setOpen(false)} />
           <div className="menu" role="menu">
-            <div className={'menu-sync' + (s.kind === 'off' ? ' off' : '')}>
-              <Icon name={s.kind === 'idle' || s.kind === 'syncing' ? 'cloud' : 'cloudOff'} size={18} />
-              <span><b>Google Drive</b><small>{err || status}</small></span>
+            {actions && actions.length > 0 && (
+              <>
+                {actionsTitle && <div className="menu-label first">{actionsTitle}</div>}
+                <div className="menu-icons">
+                  {actions.map((a) => (
+                    <button key={a.label} className={a.danger ? 'danger' : ''} onClick={() => { setOpen(false); a.onClick(); }} aria-label={a.label} title={a.label}>
+                      <Icon name={a.icon} /><span>{a.short ?? a.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <hr />
+              </>
+            )}
+            <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
+            <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
+            <button className="mi" onClick={() => { setOpen(false); openConversions(); }}><Icon name="scale" />Conversions</button>
+            <hr />
+            <div className="mi menu-settings">
+              <button className="menu-settings-go" onClick={() => nav('settings')}>
+                <Icon name="settings" />
+                <span>Settings<small className={s.kind === 'error' || s.kind === 'needs-tap' ? 'bad' : ''}>{s.kind === 'idle' && <i className="syncdot" />}{err || status}</small></span>
+              </button>
               {s.kind === 'off'
                 ? <button className="mini" onClick={() => nav('settings')}>Connect</button>
                 : <button className="mini" onClick={sync} disabled={s.kind === 'syncing'}>Sync</button>}
             </div>
-            {actions && actions.length > 0 && (
-              <>
-              <div className="menu-box">
-                {actionsTitle && <div className="menu-label">{actionsTitle}</div>}
-                {actions.map((a) => (
-                  <button key={a.label} className={'mi' + (a.danger ? ' danger' : '')} onClick={() => { setOpen(false); a.onClick(); }}><Icon name={a.icon} />{a.label}</button>
-                ))}
-              </div>
-              </>
-            )}
-            <div className="menu-label">General</div>
-            <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
-            <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
-            <button className="mi" onClick={() => { setOpen(false); openConversions(); }}><Icon name="scale" />Conversions</button>
-            <button className="mi" onClick={surprise}><Icon name="shuffle" />Random recipe</button>
-            <button className="mi" onClick={() => nav('duplicates')}><Icon name="merge" />Merge duplicates</button>
-            <div className="menu-label"><Icon name="settings" size={12} />Settings</div>
-            <button className="mi sub" onClick={() => nav('settings#sync')}><Icon name="cloud" />Sync and stats<Icon name="chev" size={14} /></button>
-            <button className="mi sub" onClick={() => nav('settings#data')}><Icon name="upload" />Import and export<Icon name="chev" size={14} /></button>
-            <button className="mi sub" onClick={() => nav('settings#history')}><Icon name="clock" />History and undo<Icon name="chev" size={14} /></button>
           </div>
         </>
       )}
@@ -144,7 +142,7 @@ export function TopBar({ title, back, recipes, extra, logo }: { title?: string; 
       {back !== undefined && <BackButton fallback={back} />}
       {logo && <img className="logo" src={import.meta.env.BASE_URL + 'icon.svg'} alt="" width={34} height={34} />}
       {title && <h1 className={back !== undefined ? 'small' : ''}>{title}</h1>}
-      <span className="hd-right">{extra}<SyncBadge /><AppMenu recipes={recipes} /></span>
+      <span className="hd-right">{extra}<SyncBadge /><AppMenu /></span>
     </header>
   );
 }

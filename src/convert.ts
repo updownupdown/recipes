@@ -1,80 +1,58 @@
-import { formatNumber, LEAD, parseNumber } from './quantity';
-import { gramsPerCup } from './units';
+import { formatNumber, parseNumber } from './quantity';
 
-/* The free-form converter behind Conversions: "2 cups flour", "350F", "100 g", "1.5 lb". */
+/* Conversions pop-up: ready-made tables per type and direction, plus a custom amount converter for each. */
 
-type Kind = 'vol' | 'mass' | 'temp';
-interface U { re: RegExp; name: string; kind: Kind; size: number }
-const UNITS: U[] = [
-  { re: /^(?:fl\.?\s*oz|fluid\s+ounces?)$/i, name: 'fl oz', kind: 'vol', size: 29.57 },
-  { re: /^(?:cups?|c)$/i, name: 'cup', kind: 'vol', size: 236.6 },
-  { re: /^(?:tablespoons?|tbsps?|tbs|T)$/, name: 'tbsp', kind: 'vol', size: 14.79 },
-  { re: /^(?:tablespoons?|tbsps?|tbs)$/i, name: 'tbsp', kind: 'vol', size: 14.79 },
-  { re: /^(?:teaspoons?|tsps?|t)$/i, name: 'tsp', kind: 'vol', size: 4.93 },
-  { re: /^(?:pints?|pt)$/i, name: 'pint', kind: 'vol', size: 473.2 },
-  { re: /^(?:quarts?|qt)$/i, name: 'quart', kind: 'vol', size: 946.4 },
-  { re: /^(?:millilit(?:re|er)s?|ml)$/i, name: 'ml', kind: 'vol', size: 1 },
-  { re: /^(?:lit(?:re|er)s?|l)$/i, name: 'l', kind: 'vol', size: 1000 },
-  { re: /^(?:grams?|g|gr)$/i, name: 'g', kind: 'mass', size: 1 },
-  { re: /^(?:kilograms?|kgs?)$/i, name: 'kg', kind: 'mass', size: 1000 },
-  { re: /^(?:ounces?|oz)$/i, name: 'oz', kind: 'mass', size: 28.35 },
-  { re: /^(?:pounds?|lbs?)$/i, name: 'lb', kind: 'mass', size: 453.6 },
-  { re: /^(?:°?\s*f|fahrenheit|degrees?\s*f)$/i, name: '°F', kind: 'temp', size: 1 },
-  { re: /^(?:°?\s*c|celsius|degrees?\s*c)$/i, name: '°C', kind: 'temp', size: 1 },
-];
+export type Dir = 'imp' | 'met';
+export type Kind = 'oven' | 'weight' | 'vol';
 
-export interface Result { value: string; unit: string; note?: string }
-export interface Conversion { from: string; results: Result[] }
+const ML: Record<string, number> = { tsp: 4.93, tbsp: 14.79, cup: 236.6, 'fl oz': 29.57, ml: 1, l: 1000 };
+const G: Record<string, number> = { oz: 28.35, lb: 453.6, g: 1, kg: 1000 };
 
-const round = (n: number) => (n >= 100 ? String(Math.round(n)) : n >= 10 ? String(Math.round(n * 10) / 10) : String(Math.round(n * 100) / 100));
-const nice = (n: number) => (n >= 10 ? String(Math.round(n)) : formatNumber(n));
+/** Units the custom converter offers, per type and direction. */
+export const FROM_UNITS: Record<Kind, Record<Dir, string[]>> = {
+  oven: { imp: ['°F'], met: ['°C'] },
+  weight: { imp: ['oz', 'lb'], met: ['g', 'kg'] },
+  vol: { imp: ['cup', 'tbsp', 'tsp', 'fl oz'], met: ['ml', 'l'] },
+};
 
-/** Converts what someone typed. Undefined when it can't tell the amount or unit. */
-export function convertText(input: string): Conversion | undefined {
-  const s = input.trim().replace(/º/g, '°');
-  const m = s.match(LEAD);
-  if (!m) return undefined;
-  const amount = parseNumber(m[2]);
-  if (!(amount > 0)) return undefined;
-  const rest = s.slice(m[0].length).trim();
-  // Longest unit phrase first ("fl oz", "degrees f"), then the rest is the ingredient.
-  const words = rest.split(/\s+/);
-  let unit: U | undefined, used = 0;
-  for (let n = Math.min(2, words.length); n >= 1 && !unit; n--) {
-    const phrase = words.slice(0, n).join(' ').replace(/\.$/, '');
-    unit = UNITS.find((u) => u.re.test(phrase));
-    if (unit) used = n;
+const OVEN: [number, number][] = [[250, 120], [275, 140], [300, 150], [325, 165], [350, 180], [375, 190], [400, 200], [425, 220], [450, 230], [475, 245], [500, 260]];
+
+export const TABLES: Record<Kind, Record<Dir, [string, string][]>> = {
+  oven: {
+    imp: OVEN.map(([f, c]) => [`${f}°F`, `${c}°C`]),
+    met: OVEN.map(([f, c]) => [`${c}°C`, `${f}°F`]),
+  },
+  weight: {
+    imp: [['1 oz', '28 g'], ['2 oz', '57 g'], ['4 oz', '113 g'], ['8 oz', '227 g'], ['12 oz', '340 g'], ['1 lb', '454 g'], ['2 lb', '907 g'], ['1 stick butter', '113 g']],
+    met: [['25 g', '1 oz'], ['50 g', '1 3/4 oz'], ['100 g', '3 1/2 oz'], ['125 g', '4 1/2 oz'], ['250 g', '9 oz'], ['500 g', '1 lb 2 oz'], ['1 kg', '2 lb 3 oz']],
+  },
+  vol: {
+    imp: [['1 tsp', '5 ml'], ['1 tbsp', '15 ml'], ['1/4 cup', '60 ml'], ['1/3 cup', '80 ml'], ['1/2 cup', '120 ml'], ['3/4 cup', '180 ml'], ['1 cup', '240 ml'], ['2 cups', '475 ml'], ['1 fl oz', '30 ml'], ['1 pint', '475 ml']],
+    met: [['5 ml', '1 tsp'], ['15 ml', '1 tbsp'], ['50 ml', '3 1/2 tbsp'], ['100 ml', '1/3 cup + 2 tbsp'], ['125 ml', '1/2 cup'], ['250 ml', '1 cup'], ['500 ml', '2 cups'], ['1 l', '4 1/4 cups']],
+  },
+};
+
+const plural = (n: string, u: string) => (u === 'cup' && n !== '1' && !/^\d\/\d$/.test(n) ? 'cups' : u);
+
+/** Converts a custom amount ("1 1/2", "½", "2.5"). Undefined when the amount can't be read. */
+export function convertAmount(kind: Kind, dir: Dir, amountText: string, unit: string): string | undefined {
+  const t = amountText.trim();
+  if (!t) return undefined;
+  const a = parseNumber(t);
+  if (!(a > 0) || !Number.isFinite(a)) return undefined;
+  if (kind === 'oven') return dir === 'imp' ? `${Math.round(((a - 32) * 5) / 9)}°C` : `${Math.round((a * 9) / 5 + 32)}°F`;
+  if (kind === 'weight') {
+    const g = a * G[unit];
+    if (dir === 'imp') return g >= 1000 ? `${Math.round(g / 10) / 100} kg` : `${Math.round(g)} g`;
+    const oz = g / G.oz;
+    if (oz < 16) return `${formatNumber(Math.round(oz * 4) / 4)} oz`;
+    const lb = Math.floor(oz / 16), rest = Math.round(oz - lb * 16);
+    return rest === 16 ? `${lb + 1} lb` : rest ? `${lb} lb ${rest} oz` : `${lb} lb`;
   }
-  if (!unit) return undefined;
-  const what = words.slice(used).join(' ').replace(/^of\s+/i, '');
-  const unitName = unit.name === 'cup' && amount > 1 ? 'cups' : ['pint', 'quart'].includes(unit.name) && amount > 1 ? unit.name + 's' : unit.name;
-  const from = `${nice(amount)} ${unitName}${what ? ' ' + what : ''}`;
-
-  if (unit.kind === 'temp') {
-    const c = unit.name === '°F' ? ((amount - 32) * 5) / 9 : amount;
-    const f = unit.name === '°C' ? (amount * 9) / 5 + 32 : amount;
-    const res: Result[] = unit.name === '°F' ? [{ value: String(Math.round(c)), unit: '°C' }] : [{ value: String(Math.round(f)), unit: '°F' }];
-    return { from, results: res };
-  }
-
-  const base = amount * unit.size; // ml or g
-  const density = gramsPerCup(what);
-  const out: Result[] = [];
-  if (unit.kind === 'vol') {
-    if (density) out.push({ value: round((base / 236.6) * density), unit: 'g', note: `typical weight for ${what}` });
-    for (const t of ['ml', 'l', 'tsp', 'tbsp', 'cup', 'fl oz']) add(out, base, t, unit.name);
-  } else {
-    for (const t of ['g', 'kg', 'oz', 'lb']) add(out, base, t, unit.name);
-    if (density) out.push({ value: nice(base / density), unit: base / density > 1 ? 'cups' : 'cup', note: `typical volume for ${what}` });
-  }
-  return { from, results: out };
-}
-
-function add(out: Result[], base: number, target: string, from: string) {
-  if (target === from) return;
-  const u = UNITS.find((x) => x.name === target)!;
-  const v = base / u.size;
-  if (v < 0.05 || v > 5000) return; // silly sizes ("0.001 l", "4000 tsp")
-  if ((target === 'l' && v < 0.25) || (target === 'kg' && v < 0.25)) return;
-  out.push({ value: target === 'ml' || target === 'g' ? round(v) : nice(Math.round(v * 8) / 8 || v), unit: target === 'cup' && v > 1 ? 'cups' : target });
+  const ml = a * ML[unit];
+  if (dir === 'imp') return ml >= 1000 ? `${Math.round(ml / 10) / 100} l` : `${Math.round(ml)} ml`;
+  if (ml < 14) { const n = formatNumber(Math.round((ml / ML.tsp) * 4) / 4); return `${n} tsp`; }
+  if (ml < 59) { const n = formatNumber(Math.round((ml / ML.tbsp) * 2) / 2); return `${n} tbsp`; }
+  const n = formatNumber(Math.round((ml / ML.cup) * 8) / 8);
+  return `${n} ${plural(n, 'cup')}`;
 }

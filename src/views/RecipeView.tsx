@@ -41,11 +41,11 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
             <Icon name="heart" style={recipe.favorite ? { fill: 'currentColor' } : undefined} />
           </button>
           <a className="ib flat" href={`#/edit/${recipe.id}`} aria-label="Edit"><Icon name="edit" /></a>
-          <AppMenu recipes={recipes} actionsTitle="This recipe" actions={[
-            { label: 'Share', icon: 'share', onClick: share },
-            { label: 'Download as JSON', icon: 'download', onClick: () => download(slug(recipe.title) + '.json', toJSON([recipe]), 'application/json') },
-            { label: 'Download as text', icon: 'file', onClick: () => download(slug(recipe.title) + '.txt', toText([recipe]), 'text/plain') },
-            { label: 'Delete recipe', icon: 'trash', danger: true, onClick: remove },
+          <AppMenu actionsTitle="This recipe" actions={[
+            { label: 'Share', short: 'Share', icon: 'share', onClick: share },
+            { label: 'Download as JSON', short: 'JSON', icon: 'download', onClick: () => download(slug(recipe.title) + '.json', toJSON([recipe]), 'application/json') },
+            { label: 'Download as text', short: 'Text', icon: 'download', onClick: () => download(slug(recipe.title) + '.txt', toText([recipe]), 'text/plain') },
+            { label: 'Delete recipe', short: 'Delete', icon: 'trash', danger: true, onClick: remove },
           ]} />
         </span>
       </header>
