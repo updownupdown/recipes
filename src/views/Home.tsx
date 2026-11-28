@@ -1,6 +1,8 @@
 import { HUES, lookVars, type Look } from '../categories';
 import { useMemo, useState } from 'react';
 import { recentIds } from '../db';
+import { isSignedIn } from '../auth';
+import { useSyncState } from '../sync';
 import { Icon } from '../icons';
 import { categoryCounts, searchRecipes } from '../search';
 import type { Recipe } from '../types';
@@ -29,6 +31,8 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
       <div className="pad-x">
         <SearchBox value={q} onChange={setQuery} placeholder={`Search ${recipes.length} recipes or ingredients`} />
       </div>
+
+      {!q.trim() && <DriveInvite />}
 
       {q.trim() ? (
         <section>
@@ -89,6 +93,27 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+const INVITE_KEY = 'drive-invite-dismissed';
+
+/** For people not syncing yet: a one-time invitation to connect Google Drive. Dismissed for good with ×. */
+function DriveInvite() {
+  const s = useSyncState();
+  const [hidden, setHidden] = useState(() => { try { return !!localStorage.getItem(INVITE_KEY); } catch { return false; } });
+  if (hidden || (s.kind !== 'off' && isSignedIn())) return null;
+  const dismiss = () => { try { localStorage.setItem(INVITE_KEY, '1'); } catch { /* ignore */ } setHidden(true); };
+  return (
+    <div className="invite">
+      <span className="invite-ic"><Icon name="cloud" size={20} /></span>
+      <span className="grow">
+        <b>Back up to Google Drive</b>
+        <small>Keep your recipes safe and the same on your phone and computer.</small>
+        <a className="btn sm" href="#/settings#sync">Connect</a>
+      </span>
+      <button className="invite-x" onClick={dismiss} aria-label="Don't show again"><Icon name="x" size={16} /></button>
     </div>
   );
 }

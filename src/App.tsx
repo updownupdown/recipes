@@ -8,6 +8,7 @@ import { AddRecipe } from './views/AddRecipe';
 import { SharedRecipe } from './views/SharedRecipe';
 import { Settings } from './views/Settings';
 import { TimerBar } from './views/TimerBar';
+import { AskHost } from './views/ui';
 import { Duplicates } from './views/Duplicates';
 
 export function App() {
@@ -44,6 +45,7 @@ export function App() {
   return (
     <div className="app">
       <TimerBar />
+      <AskHost />
       {!online && <div className="offline">Offline. Everything still works, and changes sync later.</div>}
       {body}
       {isSettings && recipes && <Settings recipes={recipes} anchor={anchor} />}

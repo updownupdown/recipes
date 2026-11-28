@@ -1,3 +1,4 @@
+import { ask } from './ask';
 import { useEffect, useState } from 'react';
 
 /* One kitchen timer for the whole app, pinned to the top of the screen. It survives reloads
@@ -63,11 +64,11 @@ export function startTimer(seconds: number, label = describe(seconds)) {
 }
 
 /** From a step: asks before replacing a timer that's already going. */
-export function startFromStep(seconds: number, text: string) {
+export async function startFromStep(seconds: number, text: string) {
   if (isActive()) {
     const left = secondsLeft(state);
-    const what = state.kind === 'ringing' ? 'A timer is ringing.' : `A timer is running (${fmt(left)} left).`;
-    if (!confirm(`${what}\n\nReset it to ${text}?`)) return;
+    const what = state.kind === 'ringing' ? 'A timer is ringing.' : `A timer is running with ${fmt(left)} left.`;
+    if (!(await ask({ title: `Reset the timer to ${text}?`, body: what, yes: 'Reset timer' }))) return;
   }
   startTimer(seconds, text);
 }

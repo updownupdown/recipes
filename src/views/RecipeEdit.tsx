@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { fixCaps, hasAllCaps } from '../caps';
 import { allRecipes, saveRecipe } from '../db';
-import { ConfirmBar } from './ui';
+import { ask } from '../ask';
 import { emptyItem, formatTime, lineToRow, nextId, parseTime, rowToLine, singularUnit, UNIT_OPTIONS, type IngRow, type StepRow } from '../editRows';
 import { goBack, replace } from '../hooks';
 import { Icon } from '../icons';
@@ -62,8 +62,8 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
     setTitle(f.title); setNotes(f.notes ?? ''); setContent(f.ingredients, f.instructions);
   };
 
-  const cancel = () => {
-    if (snapshot() !== initial && !confirm('Discard your changes?')) return;
+  const cancel = async () => {
+    if (snapshot() !== initial && !(await ask({ title: 'Discard your changes?', body: 'Your edits to this recipe will be lost.', yes: 'Discard', no: 'Keep editing', danger: true }))) return;
     goBack(recipe ? 'recipe/' + recipe.id : '');
   };
 
@@ -94,15 +94,16 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
     setRows((rs) => { const i = id === null ? rs.length - 1 : rs.findIndex((r) => r.id === id); const n = [...rs]; n.splice(i + 1, 0, row); return n; });
     focusLater(`[data-row="${row.id}"]`);
   };
-  const [ask, setAsk] = useState<{ text: string; yes: () => void }>();
   const removeRow = (r: IngRow) => {
     const go = () => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : [emptyItem()]));
     const line = rowToLine(r).replace(/^#\s*/, '');
-    if (line) setAsk({ text: `Remove “${line}”?`, yes: go }); else go();
+    if (!line) go();
+    else ask({ title: `Remove “${line}”?`, yes: 'Remove', danger: true }).then((ok) => ok && go());
   };
   const removeStep = (st: StepRow) => {
     const go = () => setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== st.id) : [{ id: nextId(), text: '' }]));
-    if (st.text.trim()) setAsk({ text: 'Remove this step?', yes: go }); else go();
+    if (!st.text.trim()) go();
+    else ask({ title: 'Remove this step?', body: st.text.length > 90 ? st.text.slice(0, 90) + '…' : st.text, yes: 'Remove', danger: true }).then((ok) => ok && go());
   };
   const ingDrag = useDragReorder(setRows);
   const stepDrag = useDragReorder(setSteps);
@@ -245,7 +246,6 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
         </label>
         <label className="lbl">Source link <small>optional</small><input id="source" className="field" type="url" value={source} onChange={(e) => setSource(e.target.value)} /></label>
       </div>
-      {ask && <ConfirmBar text={ask.text} action="Remove" onYes={() => { ask.yes(); setAsk(undefined); }} onNo={() => setAsk(undefined)} />}
       {picking && <CategoryPicker value={cats} used={used} onChange={setCats} onClose={() => setPicking(false)} />}
     </form>
   );

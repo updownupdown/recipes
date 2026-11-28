@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ask } from '../ask';
 import { deleteRecipe, markViewed, setCookNext, setFavorite } from '../db';
 import { download, slug, toJSON, toText } from '../exporters';
 import { replace } from '../hooks';
@@ -19,11 +20,11 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
       try { await navigator.share({ title: recipe.title, url }); } catch { /* cancelled */ }
       return;
     }
-    try { await navigator.clipboard.writeText(url); setMsg('Link copied'); } catch { prompt('Copy this link', url); }
+    try { await navigator.clipboard.writeText(url); setMsg('Link copied'); } catch { ask({ title: 'Copy this link', body: 'Your browser blocked copying. Select the link and copy it.', copy: url, yes: 'Done', no: null }); }
   };
 
   const remove = async () => {
-    if (!confirm(`Delete “${recipe.title}”?\n\nYou can bring it back from History and undo in the menu.`)) return;
+    if (!(await ask({ title: `Delete “${recipe.title}”?`, body: 'You can bring it back from Settings › History.', yes: 'Delete', danger: true }))) return;
     await deleteRecipe(recipe.id);
     replace('');
   };
@@ -39,9 +40,9 @@ export function RecipeView({ recipe, recipes }: { recipe?: Recipe; recipes: Reci
           <button className={'ib flat' + (recipe.favorite ? ' fav' : '')} onClick={() => setFavorite(recipe.id, !recipe.favorite)} aria-pressed={!!recipe.favorite} aria-label="Favorite">
             <Icon name="heart" style={recipe.favorite ? { fill: 'currentColor' } : undefined} />
           </button>
-          <button className="ib flat" onClick={share} aria-label="Share"><Icon name="share" /></button>
           <a className="ib flat" href={`#/edit/${recipe.id}`} aria-label="Edit"><Icon name="edit" /></a>
           <AppMenu recipes={recipes} actionsTitle="This recipe" actions={[
+            { label: 'Share', icon: 'share', onClick: share },
             { label: 'Download as JSON', icon: 'download', onClick: () => download(slug(recipe.title) + '.json', toJSON([recipe]), 'application/json') },
             { label: 'Download as text', icon: 'file', onClick: () => download(slug(recipe.title) + '.txt', toText([recipe]), 'text/plain') },
             { label: 'Delete recipe', icon: 'trash', danger: true, onClick: remove },

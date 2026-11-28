@@ -60,13 +60,15 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
   return (
     <article className="recipe" style={lookVars(look)}>
       <div className="rh">
-        <div className="tags">
-          {recipe.categories.length ? recipe.categories.map((c) => {
-            const l = categoryLook(c);
-            return <a key={c} className="tag tint" style={lookVars(l)} href={`#/c/${encodeURIComponent(c)}`}><i><Icon name={l.icon} size={12} /></i>{c}</a>;
-          }) : look.name && <span className="tag tint"><i><Icon name={look.icon} size={12} /></i>{look.name}</span>}
-        </div>
         <h1>{recipe.title}</h1>
+        {recipe.categories.length > 0 && (
+          <div className="cat-links">
+            {recipe.categories.map((c) => {
+              const l = categoryLook(c);
+              return <a key={c} style={lookVars(l)} href={`#/c/${encodeURIComponent(c)}`}><Icon name={l.icon} size={14} />{c}</a>;
+            })}
+          </div>
+        )}
         <div className="mt">
           {recipe.time && <span><Icon name="clock" size={13} />{recipe.time}</span>}
           {servings && <span><Icon name="users" size={13} />{servings} serving{servings === 1 ? '' : 's'}</span>}

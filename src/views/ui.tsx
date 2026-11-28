@@ -3,6 +3,7 @@ import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { isSignedIn } from '../auth';
 import { go } from '../hooks';
+import { answer, useAsk } from '../ask';
 import { openSetup } from '../timer';
 import { syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
@@ -110,12 +111,12 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
                 {actions.map((a) => (
                   <button key={a.label} className={'mi' + (a.danger ? ' danger' : '')} onClick={() => { setOpen(false); a.onClick(); }}><Icon name={a.icon} />{a.label}</button>
                 ))}
-                <hr />
               </>
             )}
+            <div className="menu-label">General</div>
             <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
             <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
-            <button className="mi" onClick={surprise}><Icon name="shuffle" />Surprise me</button>
+            <button className="mi" onClick={surprise}><Icon name="shuffle" />Random recipe</button>
             <button className="mi" onClick={() => nav('duplicates')}><Icon name="merge" />Merge duplicates</button>
             <div className="menu-label"><Icon name="settings" size={12} />Settings</div>
             <button className="mi sub" onClick={() => nav('settings#sync')}><Icon name="cloud" />Sync and stats<Icon name="chev" size={14} /></button>
@@ -154,18 +155,28 @@ export function SearchBox({ value, onChange, placeholder, autoFocus }: { value: 
   );
 }
 
-/** A floating bar that asks before something is removed (instead of the browser's own pop-up). */
-export function ConfirmBar({ text, action, onYes, onNo }: { text: string; action: string; onYes: () => void; onNo: () => void }) {
+/** The app's one confirmation prompt: a floating card at the bottom of the screen (see ask.ts). */
+export function AskHost() {
+  const a = useAsk();
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onNo(); };
+    if (!a) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') answer(false); };
     addEventListener('keydown', k);
     return () => removeEventListener('keydown', k);
-  }, [onNo]);
+  }, [a]);
+  if (!a) return null;
   return (
-    <div className="confirm-bar" role="alertdialog" aria-label={text}>
-      <span>{text}</span>
-      <button type="button" className="cb-no" onClick={onNo}>Cancel</button>
-      <button type="button" className="cb-yes" onClick={onYes} autoFocus>{action}</button>
+    <div className="ask-wrap">
+      <div className="ask-dim" onClick={() => answer(false)} />
+      <div className="ask" role="alertdialog" aria-label={a.title}>
+        <b>{a.title}</b>
+        {a.body && <p>{a.body}</p>}
+        {a.copy && <input className="ask-copy" readOnly value={a.copy} onFocus={(e) => e.target.select()} autoFocus />}
+        <div className="ask-btns">
+          {a.no !== null && <button type="button" className="ask-no" onClick={() => answer(false)}>{a.no ?? 'Cancel'}</button>}
+          <button type="button" className={'ask-yes' + (a.danger ? ' danger' : '')} onClick={() => answer(true)} autoFocus={!a.copy}>{a.yes}</button>
+        </div>
+      </div>
     </div>
   );
 }
