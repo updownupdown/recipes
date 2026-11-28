@@ -5,6 +5,7 @@ import { isSignedIn } from '../auth';
 import { go, goBack } from '../hooks';
 import { answer, useAsk } from '../ask';
 import { openSetup } from '../timer';
+import { openConversions } from './Conversions';
 import { syncNow, useSyncState } from '../sync';
 import type { Recipe } from '../types';
 
@@ -107,15 +108,18 @@ export function AppMenu({ recipes, actions, actionsTitle }: { recipes: Recipe[];
             </div>
             {actions && actions.length > 0 && (
               <>
+              <div className="menu-box">
                 {actionsTitle && <div className="menu-label">{actionsTitle}</div>}
                 {actions.map((a) => (
                   <button key={a.label} className={'mi' + (a.danger ? ' danger' : '')} onClick={() => { setOpen(false); a.onClick(); }}><Icon name={a.icon} />{a.label}</button>
                 ))}
+              </div>
               </>
             )}
             <div className="menu-label">General</div>
             <button className="mi" onClick={() => nav('add')}><Icon name="plus" />Add a recipe</button>
             <button className="mi" onClick={() => { setOpen(false); openSetup(); }}><Icon name="timer" />Timer</button>
+            <button className="mi" onClick={() => { setOpen(false); openConversions(); }}><Icon name="scale" />Conversions</button>
             <button className="mi" onClick={surprise}><Icon name="shuffle" />Random recipe</button>
             <button className="mi" onClick={() => nav('duplicates')}><Icon name="merge" />Merge duplicates</button>
             <div className="menu-label"><Icon name="settings" size={12} />Settings</div>

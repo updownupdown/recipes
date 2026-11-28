@@ -499,3 +499,27 @@ details.dup-fold[open] .dup-fold-body { margin-top: 8px; }
 .cat-row .cat-links { margin-top: 0; flex: 1; min-width: 0; }
 .serves { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--mu); font-size: 14px; font-weight: 500; white-space: nowrap; }
 .mt:empty { display: none; }
+
+/* Menu: the current recipe's actions in their own box */
+.menu-box { background: var(--soft); border-radius: 13px; padding: 2px 4px 4px; margin: 2px 0 4px; }
+.menu .menu-box .menu-label { border-top: 0; margin-top: 0; padding-top: 10px; }
+.menu-box .mi:hover { background: color-mix(in srgb, var(--card) 60%, transparent); }
+
+/* Conversions */
+.modal.conv { max-width: 560px; }
+.conv-try { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 4px 2px; }
+.conv-table { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.conv-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--ln); font-size: 15px; align-items: baseline; }
+.conv-row:first-child { border-top: 0; }
+.conv-row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.conv-table.oven .conv-row { grid-template-columns: 1fr 1fr 56px; }
+.conv-row.head { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mu); padding: 8px 14px; }
+.conv-help { padding: 14px 4px 0; }
+.conv-live { padding: 6px 2px; }
+.conv-from { font-size: 15px; color: var(--mu); padding: 4px 4px 10px; }
+.conv-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.conv-res { background: var(--card); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; }
+.conv-res b { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.conv-res span { color: var(--mu); font-weight: 500; }
+.conv-res.hint { grid-column: 1 / -1; background: var(--ok-bg); }
+.conv-res small { flex-basis: 100%; color: var(--mu); font-size: 12px; }

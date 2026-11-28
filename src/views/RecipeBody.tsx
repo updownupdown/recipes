@@ -61,19 +61,17 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
     <article className="recipe" style={lookVars(look)}>
       <div className="rh">
         <h1>{recipe.title}</h1>
-        {(recipe.categories.length > 0 || servings) && (
-          <div className="cat-row">
-            <div className="cat-links">
-              {recipe.categories.map((c) => {
-                const l = categoryLook(c);
-                return <a key={c} style={lookVars(l)} href={`#/c/${encodeURIComponent(c)}`}><Icon name={l.icon} size={14} />{c}</a>;
-              })}
-            </div>
-            {servings && <span className="serves"><Icon name="users" size={14} />{servings} serving{servings === 1 ? '' : 's'}</span>}
+        {recipe.categories.length > 0 && (
+          <div className="cat-links">
+            {recipe.categories.map((c) => {
+              const l = categoryLook(c);
+              return <a key={c} style={lookVars(l)} href={`#/c/${encodeURIComponent(c)}`}><Icon name={l.icon} size={14} />{c}</a>;
+            })}
           </div>
         )}
         <div className="mt">
           {recipe.time && <span><Icon name="clock" size={13} />{recipe.time}</span>}
+          {servings && <span><Icon name="users" size={13} />{servings} serving{servings === 1 ? '' : 's'}</span>}
           {recipe.source && <a href={recipe.source} target="_blank" rel="noreferrer"><Icon name="link" size={13} />{host || 'source'}</a>}
         </div>
       </div>

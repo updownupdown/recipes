@@ -29,7 +29,7 @@ const UNITS: [RegExp, string, Unit][] = [
 ];
 
 // Typical grams per US cup for dry or solid ingredients (liquids stay as ml). Most specific first.
-const GRAMS_PER_CUP: [RegExp, number][] = [
+export const GRAMS_PER_CUP: [RegExp, number][] = [
   [/almond (?:flour|meal)/i, 96],
   [/(?:bread|00) flour/i, 130],
   [/whole[- ]wheat flour/i, 120],
@@ -57,7 +57,7 @@ const GRAMS_PER_CUP: [RegExp, number][] = [
   [/shredded coconut|desiccated coconut/i, 85],
 ];
 
-function gramsPerCup(rest: string): number | undefined {
+export function gramsPerCup(rest: string): number | undefined {
   return GRAMS_PER_CUP.find(([re]) => re.test(rest))?.[1];
 }
 
