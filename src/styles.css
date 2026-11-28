@@ -460,9 +460,10 @@ button.tm { font: inherit; font-weight: 600; font-size: .92em; cursor: pointer; 
 .sl-qp { max-width: 700px; margin: 0 auto 8px; display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--ln); }
 .sl-qp-top { display: flex; align-items: center; gap: 6px; }
 .sl-qp-top b { min-width: 86px; text-align: center; font-size: 17px; color: #7a4a00; }
-.sl-qp-done { margin-left: auto; font-weight: 600; }
+.sl-qp-x { margin-left: auto; }
+.sl-qp-title { font-weight: 600; font-size: 15px; padding: 0 8px 0 4px; }
 .sl-qp-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
-.sl-qp-row:last-child { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.sl-qp-row.fr { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .sl-qc { min-height: 40px; border-radius: 10px; background: var(--soft); font-size: 17px; font-weight: 500; }
 .sl-qc.on { background: #7a4a00; color: #fff; font-weight: 600; }
 @media (max-width: 380px) { .sl-tbt { display: none; } }
@@ -472,7 +473,13 @@ button.tm { font: inherit; font-weight: 600; font-size: .92em; cursor: pointer; 
 .sl-unit { color: #4d5e2a; background: #e8eedc; cursor: pointer; }
 .sl-unit .icon { transform: rotate(90deg); }
 .sl-unit.off { opacity: .45; }
-.sl-unit select { position: absolute; inset: 0; opacity: 0; width: 100%; font-size: 16px; cursor: pointer; }
+.sl-tb.sl-unit.on { background: #4d5e2a; color: #fff; }
+.sl-up-groups { display: flex; flex-direction: column; gap: 6px; max-height: 42vh; overflow-y: auto; }
+.sl-up-g { display: flex; align-items: flex-start; gap: 5px; }
+.sl-up-g small { width: 58px; flex: none; line-height: 36px; font-size: 12px; font-weight: 600; color: var(--mu); }
+.sl-up-g > span { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; }
+.sl-uc { min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--soft); font-size: 15px; font-weight: 500; }
+.sl-uc.on { background: #4d5e2a; color: #fff; font-weight: 600; }
 .sl-del { color: var(--danger); }
 .sl-undo { font-weight: 600; }
 @media (prefers-color-scheme: dark) {
@@ -481,6 +488,7 @@ button.tm { font: inherit; font-weight: 600; font-size: .92em; cursor: pointer; 
   .sl-tb.sl-qty.on, .sl-qc.on { background: #f3cf7a; color: #1c1d20; }
   .sl-u, .sl-unit { color: #c9d99a; background: #2c3420; box-shadow: 0 0 0 2px #2c3420; }
   .sl-unit { box-shadow: none; }
+  .sl-tb.sl-unit.on, .sl-uc.on { background: #c9d99a; color: #1c1d20; }
 }
 .page.edit { padding-bottom: 72px; }
 .dup-fold { font-size: 13.5px; background: var(--bg); border-radius: 10px; padding: 8px 10px; line-height: 1.45; }

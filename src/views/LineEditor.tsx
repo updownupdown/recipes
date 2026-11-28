@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { lineToRow, nextId, rowToLine, singularUnit, UNIT_OPTIONS, UNIT_RE } from '../editRows';
+import { lineToRow, nextId, rowToLine, singularUnit, UNIT_RE } from '../editRows';
 import { LEAD, parseNumber } from '../quantity';
 import { Icon } from '../icons';
 
@@ -128,11 +128,12 @@ export function LineEditor({ kind, lines, onChange, placeholder }: { kind: Kind;
   };
   const row = cur && kind === 'ing' && !isSection(cur.text) ? lineToRow(cur.text) : undefined;
   const unit = row?.kind === 'item' ? singularUnit(row.unit) : '';
-  const [qtyOpen, setQtyOpen] = useState(false);
-  useEffect(() => { if (active === null) setQtyOpen(false); }, [active]);
+  const [panel, setPanel] = useState<'qty' | 'unit' | null>(null);
+  useEffect(() => { if (active === null) setPanel(null); }, [active]);
+  const toggle = (p: 'qty' | 'unit') => setPanel((o) => (o === p ? null : p));
   const setQty = (q: string) => {
     if (!cur || row?.kind !== 'item') return;
-    patch(rowToLine({ ...row, qty: q }));
+    patch(rowToLine({ ...row, qty: q, unit: q ? row.unit : '' })); // no amount: a bare "cup sugar" makes no sense
   };
   const setUnit = (u: string) => {
     if (!cur || row?.kind !== 'item') return;
@@ -167,22 +168,20 @@ export function LineEditor({ kind, lines, onChange, placeholder }: { kind: Kind;
       }}><Icon name="plus" size={14} />{kind === 'ing' ? 'Add ingredient' : 'Add step'}</button>
 
       {cur && createPortal(
-        <Toolbar above={qtyOpen && row?.kind === 'item' ? <QtyPicker qty={row.qty} onPick={setQty} onClose={() => setQtyOpen(false)} /> : null}>
+        <Toolbar above={row?.kind !== 'item' ? null
+          : panel === 'qty' ? <QtyPicker qty={row.qty} onPick={setQty} onClose={() => setPanel(null)} />
+          : panel === 'unit' ? <UnitPicker unit={unit} onPick={setUnit} onClose={() => setPanel(null)} /> : null}>
           <Tb on={() => move(-1)} label="Move up" disabled={idx(cur.id) === 0}><Icon name="chev" size={15} className="up" /></Tb>
           <Tb on={() => move(1)} label="Move down" disabled={idx(cur.id) === lines.length - 1}><Icon name="chev" size={15} className="down" /></Tb>
           {kind === 'ing' && (
-            <Tb on={() => setQtyOpen((o) => !o)} label="Quantity" cls="sl-qty" pressed={qtyOpen} disabled={row?.kind !== 'item'}>
+            <Tb on={() => toggle('qty')} label="Quantity" cls="sl-qty" pressed={panel === 'qty'} disabled={row?.kind !== 'item'}>
               {row?.kind === 'item' && row.qty ? row.qty : 'qty'}
             </Tb>
           )}
           {kind === 'ing' && (
-            <label className={'sl-tb sl-unit' + (row?.kind === 'item' ? '' : ' off')}>
-              <span>{unit || 'unit'}</span><Icon name="chev" size={12} />
-              <select value={unit} disabled={row?.kind !== 'item'} onChange={(e) => setUnit(e.target.value)} aria-label="Unit">
-                <option value="">no unit</option>
-                {[...(unit && !UNIT_OPTIONS.includes(unit) ? [unit] : []), ...UNIT_OPTIONS].map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </label>
+            <Tb on={() => toggle('unit')} label="Unit" cls="sl-unit" pressed={panel === 'unit'} disabled={row?.kind !== 'item'}>
+              {unit || 'unit'}<Icon name="chev" size={12} />
+            </Tb>
           )}
           <span className="sl-gap" />
           <Tb on={toggleSection} label={kind === 'ing' ? 'Section' : 'Heading'} pressed={kind === 'ing' ? isSection(cur.text) : isHeading(cur.text)}>
@@ -204,30 +203,76 @@ function Tb({ on, label, children, disabled, pressed, cls = '' }: { on: () => vo
     onPointerDown={(e) => e.preventDefault()} onClick={on}>{children}</button>;
 }
 
-const WHOLES = [0, 1, 2, 3, 4, 5, 6];
-const FRACS: [number, string, string][] = [[0, '–', ''], [1 / 4, '¼', '1/4'], [1 / 3, '⅓', '1/3'], [1 / 2, '½', '1/2'], [2 / 3, '⅔', '2/3'], [3 / 4, '¾', '3/4']];
+const WHOLES = [0, 1, 2, 3, 4, 5];
+const FRACS: [number, string, string][] = [[1 / 4, '¼', '1/4'], [1 / 3, '⅓', '1/3'], [1 / 2, '½', '1/2'], [2 / 3, '⅔', '2/3'], [3 / 4, '¾', '3/4']];
+const keep = (e: React.PointerEvent) => e.preventDefault(); // the line keeps focus, so the keyboard stays up
 
-/** Whole number + fraction in two taps; − and + step by one. Writes plain fractions ("1 1/2"). */
+function PanelHead({ title, value, onClose, children }: { title: string; value?: string; onClose: () => void; children?: React.ReactNode }) {
+  return (
+    <div className="sl-qp-top">
+      {children ?? <span className="sl-qp-title">{title}</span>}
+      {value !== undefined && <b>{value}</b>}
+      <button type="button" className="sl-tb sl-qp-x" aria-label="Close" onClick={onClose}><Icon name="x" size={16} /></button>
+    </div>
+  );
+}
+
+/** "–" clears the amount, 0–5 set the whole number, fractions add to it (tap again to drop); − and + step by one. Writes plain fractions ("1 1/2"). */
 function QtyPicker({ qty, onPick, onClose }: { qty: string; onPick: (q: string) => void; onClose: () => void }) {
   const n = parseNumber(qty);
   const whole = Math.floor(n + 0.01);
-  const fi = FRACS.findIndex(([v]) => Math.abs(v - (n - whole)) < 0.04);
-  const frac = fi >= 0 ? FRACS[fi] : FRACS[0];
+  const fr = FRACS.find(([v]) => Math.abs(v - (n - whole)) < 0.04);
+  const frac = fr?.[2] ?? '';
+  const small = whole <= 5; // past 5 the chips can't show the amount, so none light up
   const out = (w: number, f: string) => (w > 0 && f ? `${w} ${f}` : w > 0 ? String(w) : f);
-  const keep = (e: React.PointerEvent) => e.preventDefault();
   return (
     <div className="sl-qp" onPointerDown={keep}>
-      <div className="sl-qp-top">
-        <button type="button" className="sl-tb" aria-label="One less" disabled={whole < 1} onClick={() => onPick(out(whole - 1, frac[2]))}><Icon name="minus" size={15} /></button>
+      <PanelHead title="Amount" onClose={onClose}>
+        <button type="button" className="sl-tb" aria-label="One less" disabled={whole < 1} onClick={() => onPick(out(whole - 1, frac))}><Icon name="minus" size={15} /></button>
         <b>{qty || 'no amount'}</b>
-        <button type="button" className="sl-tb" aria-label="One more" onClick={() => onPick(out(whole + 1, frac[2]))}><Icon name="plus" size={15} /></button>
-        <button type="button" className="sl-tb sl-qp-done" onClick={onClose}>Done</button>
-      </div>
+        <button type="button" className="sl-tb" aria-label="One more" onClick={() => onPick(out(whole + 1, frac))}><Icon name="plus" size={15} /></button>
+      </PanelHead>
       <div className="sl-qp-row" aria-label="Whole number">
-        {WHOLES.map((w) => <button type="button" key={w} className={'sl-qc' + (w === whole && n > 0 ? ' on' : '')} onClick={() => onPick(out(w, frac[2]))}>{w}</button>)}
+        <button type="button" className={'sl-qc' + (!qty.trim() ? ' on' : '')} aria-label="No amount" onClick={() => onPick('')}>–</button>
+        {WHOLES.map((w) => <button type="button" key={w} className={'sl-qc' + (small && w > 0 && w === whole ? ' on' : '')} onClick={() => onPick(out(w, frac))}>{w}</button>)}
       </div>
-      <div className="sl-qp-row" aria-label="Fraction">
-        {FRACS.map(([, glyph, plain]) => <button type="button" key={glyph} className={'sl-qc' + (fi >= 0 && frac[2] === plain && n > 0 ? ' on' : '')} aria-label={plain || 'no fraction'} onClick={() => onPick(out(whole, plain))}>{glyph}</button>)}
+      <div className="sl-qp-row fr" aria-label="Fraction">
+        {FRACS.map(([, glyph, plain]) => {
+          const on = small && frac === plain;
+          return <button type="button" key={glyph} className={'sl-qc' + (on ? ' on' : '')} aria-label={plain} aria-pressed={on} onClick={() => onPick(out(whole, on ? '' : plain))}>{glyph}</button>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+const UNIT_GROUPS: [string, string[]][] = [
+  ['Spoons', ['tsp', 'tbsp', 'cup']],
+  ['Weight', ['g', 'kg', 'oz', 'lb']],
+  ['Liquid', ['ml', 'l', 'fl oz', 'pint', 'quart']],
+  ['A little', ['pinch', 'dash', 'handful', 'sprig']],
+  ['Pieces', ['clove', 'slice', 'piece', 'stick', 'bunch', 'can', 'package']],
+];
+
+/** Units as big chips in groups; tapping the current one again removes it. */
+function UnitPicker({ unit, onPick, onClose }: { unit: string; onPick: (u: string) => void; onClose: () => void }) {
+  const known = UNIT_GROUPS.some(([, us]) => us.includes(unit));
+  return (
+    <div className="sl-qp sl-up" onPointerDown={keep}>
+      <PanelHead title="Unit" onClose={onClose}>
+        <span className="sl-qp-title">Unit</span>
+        <button type="button" className={'sl-uc' + (!unit ? ' on' : '')} onClick={() => onPick('')}>No unit</button>
+        {unit && !known && <button type="button" className="sl-uc on" onClick={() => onPick('')}>{unit}</button>}
+      </PanelHead>
+      <div className="sl-up-groups">
+        {UNIT_GROUPS.map(([name, us]) => (
+          <div key={name} className="sl-up-g" role="group" aria-label={name}>
+            <small>{name}</small>
+            <span>
+              {us.map((u) => <button type="button" key={u} className={'sl-uc' + (u === unit ? ' on' : '')} aria-pressed={u === unit} onClick={() => onPick(u === unit ? '' : u)}>{u}</button>)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
