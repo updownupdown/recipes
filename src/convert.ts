@@ -54,8 +54,6 @@ export function convertText(input: string): Conversion | undefined {
     const c = unit.name === '°F' ? ((amount - 32) * 5) / 9 : amount;
     const f = unit.name === '°C' ? (amount * 9) / 5 + 32 : amount;
     const res: Result[] = unit.name === '°F' ? [{ value: String(Math.round(c)), unit: '°C' }] : [{ value: String(Math.round(f)), unit: '°F' }];
-    const gas = gasMark(c);
-    if (gas) res.push({ value: String(gas), unit: 'gas mark' });
     return { from, results: res };
   }
 
@@ -79,10 +77,4 @@ function add(out: Result[], base: number, target: string, from: string) {
   if (v < 0.05 || v > 5000) return; // silly sizes ("0.001 l", "4000 tsp")
   if ((target === 'l' && v < 0.25) || (target === 'kg' && v < 0.25)) return;
   out.push({ value: target === 'ml' || target === 'g' ? round(v) : nice(Math.round(v * 8) / 8 || v), unit: target === 'cup' && v > 1 ? 'cups' : target });
-}
-
-function gasMark(c: number): number | undefined {
-  const marks: [number, number][] = [[140, 1], [150, 2], [165, 3], [180, 4], [190, 5], [200, 6], [220, 7], [230, 8], [240, 9]];
-  if (c < 130 || c > 250) return undefined;
-  return marks.reduce((best, m) => (Math.abs(m[0] - c) < Math.abs(best[0] - c) ? m : best))[1];
 }

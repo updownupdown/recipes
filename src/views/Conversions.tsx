@@ -11,7 +11,7 @@ const COMMON: [string, string][] = [
   ['1 cup', '240 ml'], ['1 tbsp', '15 ml · 3 tsp'], ['1 tsp', '5 ml'], ['1 stick butter', '113 g · 1/2 cup'],
   ['1 oz', '28 g'], ['1 lb', '454 g'], ['1 fl oz', '30 ml'], ['1 pint (US)', '473 ml'],
 ];
-const OVEN: [number, number, number][] = [[250, 120, 0], [300, 150, 2], [325, 165, 3], [350, 180, 4], [375, 190, 5], [400, 200, 6], [425, 220, 7], [450, 230, 8], [475, 245, 9]];
+const OVEN: [number, number][] = [[250, 120], [300, 150], [325, 165], [350, 180], [375, 190], [400, 200], [425, 220], [450, 230], [475, 245]];
 const CUPS: [string, number][] = [
   ['All-purpose flour', 125], ['Bread flour', 130], ['Whole wheat flour', 120], ['White sugar', 200], ['Brown sugar (packed)', 220],
   ['Icing sugar', 120], ['Butter', 227], ['Cocoa powder', 85], ['Rolled oats', 90], ['Rice (uncooked)', 185], ['Grated parmesan', 100], ['Honey', 340],
@@ -72,8 +72,8 @@ function Conversions({ onClose }: { onClose: () => void }) {
               <section>
                 <div className="menu-label">Oven temperatures</div>
                 <div className="conv-table oven">
-                  <div className="conv-row head"><span>°F</span><span>°C</span><span>Gas</span></div>
-                  {OVEN.map(([f, c, g]) => <div key={f} className="conv-row"><b>{f}°F</b><span>{c}°C</span><span className="muted">{g || '1/2'}</span></div>)}
+                  <div className="conv-row head"><span>°F</span><span>°C</span></div>
+                  {OVEN.map(([f, c]) => <div key={f} className="conv-row"><b>{f}°F</b><span>{c}°C</span></div>)}
                 </div>
               </section>
               <section>
