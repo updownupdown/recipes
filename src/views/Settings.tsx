@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { isSignedIn, requestToken, signedInEmail, signOut } from '../auth';
-import { mergeRecipes } from '../db';
+import { mergeRecipes, saveRecipe } from '../db';
+import { parseRecipes } from '../parse';
+import { fixCaps } from '../caps';
+import { guessCategory } from '../categories';
 import { createDoc } from '../drive';
 import { download, fromJSON, toHTML, toJSON, toText } from '../exporters';
 import { Icon } from '../icons';
@@ -52,14 +55,25 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
     try {
       let total = 0, seen = 0;
       for (const f of files) {
-        const list = fromJSON(await f.text());
-        seen += list.length;
-        total += await mergeRecipes(list);
+        const body = await f.text();
+        if (/^\s*[[{]/.test(body)) {
+          const list = fromJSON(body);
+          seen += list.length;
+          total += await mergeRecipes(list);
+        } else {
+          // Plain text or Markdown: one or many recipes.
+          const drafts = parseRecipes(body).map(fixCaps);
+          for (const d of drafts) {
+            const g = d.categories.length ? undefined : guessCategory(d.title, d.ingredients.join(' '));
+            await saveRecipe(g ? { ...d, categories: [g.name] } : d);
+          }
+          seen += drafts.length; total += drafts.length;
+        }
       }
       const same = seen - total;
       setMsg(`Imported ${total} recipe${total === 1 ? '' : 's'}.` + (same ? ` ${same} ${same === 1 ? 'was' : 'were'} already up to date.` : ''));
     } catch (e) {
-      setMsg(`Couldn't import: ${(e as Error).message} Check that it's a MyRecipes JSON file.`);
+      setMsg(`Couldn't import: ${(e as Error).message} Check that it's a MyRecipes JSON file or a text file of recipes.`);
     }
     if (file.current) file.current.value = '';
   };
@@ -122,8 +136,8 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
         {tab === 'data' && <>
 
         <section className="panel" id="import">
-          <div className="panel-head"><span className="tile soft"><Icon name="upload" /></span><span><b>Import</b><small>MyRecipes JSON files. Existing recipes are updated, not duplicated.</small></span></div>
-          <label className="btn ghost filebtn"><Icon name="upload" size={16} />Choose file<input ref={file} type="file" accept=".json,application/json" multiple onChange={(e) => onFiles(e.target.files)} /></label>
+          <div className="panel-head"><span className="tile soft"><Icon name="upload" /></span><span><b>Import</b><small>MyRecipes JSON backups, or text and Markdown files with one or more recipes.</small></span></div>
+          <label className="btn ghost filebtn"><Icon name="upload" size={16} />Choose file<input ref={file} type="file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" multiple onChange={(e) => onFiles(e.target.files)} /></label>
         </section>
 
         <section className="panel" id="export">

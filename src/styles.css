@@ -387,3 +387,9 @@ select.field.unit option { color: var(--fg); }
 .timer .timer-btns button.go { background: #fff; color: #3d4a2c; }
 .timer-fill { background: rgba(255, 255, 255, .12); }
 .timer-btns button { background: rgba(255, 255, 255, .16); }
+.found { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.found-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px 14px; border-top: 1px solid var(--ln); }
+.found-row:first-child { border-top: 0; }
+.found-row b { display: block; font-weight: 600; font-size: 15px; }
+.found-row small { color: var(--mu); font-size: 12.5px; }
+.found-row .icon { color: var(--ln2); }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons';
-import { parseRecipeText } from '../parse';
+import { parseRecipes, parseRecipeText } from '../parse';
+import { saveRecipe } from '../db';
+import { replace } from '../hooks';
 import { guessCategory } from '../categories';
 import { fixCaps } from '../caps';
 import { readerConfigured, recipeFromUrl } from '../webImport';
@@ -8,7 +10,7 @@ import type { RecipeDraft } from '../types';
 import { RecipeEdit } from './RecipeEdit';
 import { BackButton } from './ui';
 
-type Mode = 'choose' | 'paste' | 'link' | 'form';
+type Mode = 'choose' | 'paste' | 'link' | 'form' | 'many';
 
 /** Something shared into the app from another app (Android share sheet), stashed by main.tsx. */
 export function takeShared(): { url?: string; text?: string } | undefined {
@@ -34,6 +36,7 @@ export function AddRecipe() {
   const [text, setText] = useState(shared?.text ?? '');
   const [link, setLink] = useState(shared?.url ?? '');
   const [draft, setDraft] = useState<RecipeDraft>();
+  const [many, setMany] = useState<RecipeDraft[]>([]);
   const [busy, setBusy] = useState<{ label: string; fraction?: number }>();
   const [error, setError] = useState('');
   const autoFetched = useRef(false);
@@ -62,8 +65,20 @@ export function AddRecipe() {
 
   if (mode === 'form') return <RecipeEdit draft={draft} />;
 
-  const back = mode === 'choose' ? undefined : () => { setMode('choose'); setError(''); };
-  const titles: Record<Mode, string> = { choose: 'Add a recipe', paste: 'Paste text', link: 'From a web link', form: '' };
+  const back = mode === 'choose' ? undefined : () => { setMode(mode === 'many' ? 'paste' : 'choose'); setError(''); };
+  const titles: Record<Mode, string> = { choose: 'Add a recipe', paste: 'Paste text', link: 'From a web link', form: '', many: `${many.length} recipes found` };
+  const readPaste = () => {
+    const found = parseRecipes(text).map((d) => withGuess(fixCaps(d)));
+    if (found.length > 1) { setMany(found); setMode('many'); return; }
+    setDraft(found[0] ?? withGuess(fixCaps(parseRecipeText(text))));
+    setMode('form');
+  };
+  const saveAll = async () => {
+    setBusy({ label: 'Saving…' });
+    for (const d of many) await saveRecipe(d);
+    setBusy(undefined);
+    replace('all');
+  };
 
   return (
     <div className="page">
@@ -122,8 +137,21 @@ export function AddRecipe() {
           <textarea id="paste" className="field" rows={14} value={text} onChange={(e) => setText(e.target.value)} autoFocus
             placeholder={'Banana bread\nServes 8\n\nIngredients\n3 ripe bananas\n1/3 cup melted butter\n\nInstructions\nPreheat oven to 350°F…'} />
           <div className="row gap">
-            <button className="btn" disabled={!text.trim()} onClick={() => { setDraft(withGuess(fixCaps(parseRecipeText(text)))); setMode('form'); }}>Continue</button>
+            <button className="btn" disabled={!text.trim()} onClick={readPaste}>Continue</button>
           </div>
+        </div>
+      )}
+      {mode === 'many' && (
+        <div className="pad-x stack">
+          <p className="muted small">Check the list, then save them all. You can edit any of them afterwards.</p>
+          <div className="found">
+            {many.map((d, i) => (
+              <div key={i} className="found-row">
+                <span className="grow"><b>{d.title}</b><small>{d.ingredients.length} ingredients · {d.instructions.length} steps{d.servings ? ` · serves ${d.servings}` : ''}{d.categories[0] ? ` · ${d.categories[0]}` : ''}</small></span>
+              </div>
+            ))}
+          </div>
+          <button className="btn block" onClick={saveAll} disabled={!!busy}>{busy ? busy.label : `Save all ${many.length}`}</button>
         </div>
       )}
     </div>
