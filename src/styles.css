@@ -362,3 +362,28 @@ button.tm { font: inherit; font-weight: 600; font-size: .92em; cursor: pointer; 
 /* Keep the timer visible above pop-ups */
 .timer { z-index: 50; }
 .modal-wrap { top: calc(var(--timer-on) * (60px + env(safe-area-inset-top))); padding-top: calc(12px + env(safe-area-inset-top) * (1 - var(--timer-on))); }
+
+/* Round: polish */
+.hd .logo { width: 34px; height: 34px; border-radius: 9px; flex: none; margin-right: -2px; }
+.about { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 18px 12px 6px; color: var(--mu); font-size: 13px; line-height: 1.45; }
+.about img { border-radius: 11px; margin-bottom: 4px; }
+.about b { color: var(--fg); font-size: 15px; font-weight: 600; }
+.about p { margin: 0; }
+.about a { color: var(--fg); font-weight: 500; margin-top: 4px; }
+.grip { color: var(--mu); }
+.erow .field::placeholder, .erow textarea::placeholder { color: color-mix(in srgb, var(--mu) 55%, transparent); }
+select.field.unit { appearance: none; -webkit-appearance: none; padding-right: 6px; text-align: center; text-align-last: center; cursor: pointer; }
+select.field.unit.empty { color: color-mix(in srgb, var(--mu) 55%, transparent); }
+select.field.unit option { color: var(--fg); }
+.picked { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 16px 8px; padding: 10px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); min-height: 48px; align-items: center; }
+.picked .chip .icon:last-child { opacity: .6; margin-left: 2px; }
+.confirm-bar { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 45; max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--ink); color: var(--on-ink); box-shadow: var(--shadow-lg); animation: rise .18s ease-out; }
+.confirm-bar span { flex: 1; min-width: 0; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.confirm-bar button { height: 36px; padding: 0 14px; border-radius: 999px; font-weight: 600; font-size: 14px; color: inherit; }
+.confirm-bar .cb-no { opacity: .8; }
+.confirm-bar .cb-yes { background: var(--danger); color: #fff; }
+@keyframes rise { from { transform: translateY(16px); opacity: 0; } }
+.timer { background: #3d4a2c; color: #fff; }
+.timer .timer-btns button.go { background: #fff; color: #3d4a2c; }
+.timer-fill { background: rgba(255, 255, 255, .12); }
+.timer-btns button { background: rgba(255, 255, 255, .16); }

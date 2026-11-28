@@ -22,10 +22,10 @@ describe('convertLine', () => {
   it('turns metric into US units', () => {
     expect(convertLine('250 g flour', 'us')).toBe('2 cups flour');
     expect(convertLine('500 g ground beef', 'us')).toBe('1 lb ground beef');
-    expect(convertLine('100 g feta', 'us')).toBe('3½ oz feta');
+    expect(convertLine('100 g feta', 'us')).toBe('3 1/2 oz feta');
     expect(convertLine('250 ml milk', 'us')).toBe('1 cup milk');
     expect(convertLine('30 ml lemon juice', 'us')).toBe('2 tbsp lemon juice');
-    expect(convertLine('1 l stock', 'us')).toBe('4¼ cups stock');
+    expect(convertLine('1 l stock', 'us')).toBe('4 1/4 cups stock');
   });
 });
 

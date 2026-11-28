@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { fixCaps, hasAllCaps } from '../caps';
 import { allRecipes, saveRecipe } from '../db';
-import { emptyItem, formatTime, lineToRow, nextId, parseTime, rowToLine, UNIT_OPTIONS, type IngRow, type StepRow } from '../editRows';
+import { ConfirmBar } from './ui';
+import { emptyItem, formatTime, lineToRow, nextId, parseTime, rowToLine, singularUnit, UNIT_OPTIONS, type IngRow, type StepRow } from '../editRows';
 import { goBack, replace } from '../hooks';
 import { Icon } from '../icons';
 import type { Recipe, RecipeDraft } from '../types';
@@ -93,13 +94,15 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
     setRows((rs) => { const i = id === null ? rs.length - 1 : rs.findIndex((r) => r.id === id); const n = [...rs]; n.splice(i + 1, 0, row); return n; });
     focusLater(`[data-row="${row.id}"]`);
   };
+  const [ask, setAsk] = useState<{ text: string; yes: () => void }>();
   const removeRow = (r: IngRow) => {
-    if (rowToLine(r) && !confirm(`Remove “${rowToLine(r).replace(/^#\s*/, '')}”?`)) return;
-    setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : [emptyItem()]));
+    const go = () => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : [emptyItem()]));
+    const line = rowToLine(r).replace(/^#\s*/, '');
+    if (line) setAsk({ text: `Remove “${line}”?`, yes: go }); else go();
   };
   const removeStep = (st: StepRow) => {
-    if (st.text.trim() && !confirm('Remove this step?')) return;
-    setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== st.id) : [{ id: nextId(), text: '' }]));
+    const go = () => setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== st.id) : [{ id: nextId(), text: '' }]));
+    if (st.text.trim()) setAsk({ text: 'Remove this step?', yes: go }); else go();
   };
   const ingDrag = useDragReorder(setRows);
   const stepDrag = useDragReorder(setSteps);
@@ -183,7 +186,6 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
         ) : (
           <>
             <div className="lbl">Ingredients</div>
-            <datalist id="unit-list">{UNIT_OPTIONS.map((u) => <option key={u} value={u} />)}</datalist>
             <div className="rows" ref={ingDrag.list}>
               {rows.map((r, i) => r.kind === 'section' ? (
                 <div key={r.id} data-idx={i} className={'erow section' + (ingDrag.dragging === i ? ' dragging' : '')}>
@@ -196,7 +198,10 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
                 <div key={r.id} data-idx={i} className={'erow' + (ingDrag.dragging === i ? ' dragging' : '')}>
                   <Grip {...ingDrag.handle(i)} />
                   <input data-row={r.id} className="field qty" value={r.qty} placeholder="Qty" inputMode="decimal" onChange={(e) => patchRow(r.id, { qty: e.target.value })} aria-label="Quantity" />
-                  <input className="field unit" value={r.unit} placeholder="Unit" list="unit-list" onChange={(e) => patchRow(r.id, { unit: e.target.value })} aria-label="Unit" />
+                  <select className={'field unit' + (r.unit ? '' : ' empty')} value={singularUnit(r.unit)} onChange={(e) => patchRow(r.id, { unit: e.target.value })} aria-label="Unit">
+                    <option value="">Unit</option>
+                    {[...(r.unit && !UNIT_OPTIONS.includes(singularUnit(r.unit)) ? [singularUnit(r.unit)] : []), ...UNIT_OPTIONS].map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
                   <input className="field grow" value={r.label} placeholder="Ingredient" onChange={(e) => patchRow(r.id, { label: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Ingredient" />
                   <Trash onClick={() => removeRow(r)} />
@@ -234,6 +239,7 @@ export function RecipeEdit({ recipe, draft }: { recipe?: Recipe; draft?: RecipeD
         </label>
         <label className="lbl">Source link <small>optional</small><input id="source" className="field" type="url" value={source} onChange={(e) => setSource(e.target.value)} /></label>
       </div>
+      {ask && <ConfirmBar text={ask.text} action="Remove" onYes={() => { ask.yes(); setAsk(undefined); }} onNo={() => setAsk(undefined)} />}
       {picking && <CategoryPicker value={cats} used={used} onChange={setCats} onClose={() => setPicking(false)} />}
     </form>
   );

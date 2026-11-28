@@ -3,7 +3,7 @@ import { categoryLook, lookVars, recipeLook } from '../categories';
 import { Icon } from '../icons';
 import { parseDuration, startFromStep } from '../timer';
 import { isStepHeading } from '../exporters';
-import { scaleLine, splitAmount } from '../quantity';
+import { plainFractions, scaleLine, splitAmount } from '../quantity';
 import { convertLine, convertTemps, type UnitSystem } from '../units';
 import { useWakeLock } from '../hooks';
 import type { Recipe } from '../types';
@@ -33,27 +33,11 @@ const SHORT: [RegExp, string][] = [
   [/\btablespoons?\b|\btbsps\b/i, 'tbsp'], [/\bteaspoons?\b|\btsps\b/i, 'tsp'], [/\bounces?\b/i, 'oz'],
   [/\bpounds?\b|\blbs\b/i, 'lb'], [/\bgrams?\b/i, 'g'], [/\bpackages?\b/i, 'pkg'], [/\bpinches\b/i, 'pinch'],
 ];
-const FRAC: Record<string, string> = { '1/2': '½', '1/3': '⅓', '2/3': '⅔', '1/4': '¼', '3/4': '¾', '1/8': '⅛', '3/8': '⅜' };
-
-/** Compact amount for the amount column: "1 1/2 teaspoons" -> "1½ tsp". */
+/** Compact amount for the amount column: "1½ teaspoons" -> "1 1/2 tsp". */
 function shortAmount(a: string): string {
-  let t = a.replace(/\.$/, '');
+  let t = plainFractions(a.replace(/\.$/, ''));
   for (const [re, s] of SHORT) t = t.replace(re, s);
-  return t.replace(/(\d+)\s+(\d\/\d)\b/g, (m, w, f) => (FRAC[f] ? w + FRAC[f] : m)).replace(/\b(\d\/\d)\b/g, (m) => FRAC[m] ?? m);
-}
-
-const GLYPH: Record<string, [string, string]> = {
-  '½': ['1', '2'], '⅓': ['1', '3'], '⅔': ['2', '3'], '¼': ['1', '4'], '¾': ['3', '4'], '⅕': ['1', '5'], '⅖': ['2', '5'],
-  '⅗': ['3', '5'], '⅘': ['4', '5'], '⅙': ['1', '6'], '⅚': ['5', '6'], '⅛': ['1', '8'], '⅜': ['3', '8'], '⅝': ['5', '8'], '⅞': ['7', '8'],
-};
-
-/** Amounts with large, readable fractions (the font's ½ ¼ glyphs are tiny). */
-function Amount({ text }: { text: string }) {
-  const parts = text.split(/([½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\b\d\/\d+\b)/);
-  return <>{parts.map((p, i) => {
-    const f = GLYPH[p] ?? (/^\d\/\d+$/.test(p) ? (p.split('/') as [string, string]) : undefined);
-    return f ? <span key={i} className="fr"><sup>{f[0]}</sup><span>⁄</span><sub>{f[1]}</sub></span> : p;
-  })}</>;
+  return t;
 }
 
 export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.ReactNode }) {
@@ -92,7 +76,7 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
 
       <div className="ctl one">
         <div className="seg sm" role="group" aria-label="Scale">
-          {FACTORS.map((f) => <button key={f} className={factor === f ? 'on' : ''} onClick={() => setFactor(f)}>{f === 0.5 ? '½' : f}×</button>)}
+          {FACTORS.map((f) => <button key={f} className={factor === f ? 'on' : ''} onClick={() => setFactor(f)}>{f === 0.5 ? '1/2' : f}×</button>)}
         </div>
         <label className="unit-pick">
           <select value={units} onChange={(e) => setUnits(e.target.value as UnitSystem)} aria-label="Units">
@@ -118,8 +102,8 @@ export function RecipeBody({ recipe, actions }: { recipe: Body; actions?: React.
           const on = done.has(key);
           const cells = <>
               {cook && <span className="bx">{on && <Icon name="check" size={11} />}</span>}
-              <span className={'q' + (amt ? '' : ' none')}>{amt ? <Amount text={shortAmount(amt)} /> : '–'}</span>
-              <span className="tx">{rest}</span>
+              <span className={'q' + (amt ? '' : ' none')}>{amt ? shortAmount(amt) : '–'}</span>
+              <span className="tx">{plainFractions(rest)}</span>
             </>;
             return cook
               ? <button key={i} className={'ing-row' + (on ? ' dn' : '')} onClick={() => toggle(key)} aria-pressed={on}>{cells}</button>

@@ -106,7 +106,12 @@ export function Settings({ recipes, anchor }: { recipes: Recipe[]; anchor?: stri
           )}
         </section>
 
-        <p className="muted small center">MyRecipes · your recipes stay on your device and in your own Google Drive. <a href="./privacy.html">Privacy</a></p>
+        <div className="about">
+          <img src={import.meta.env.BASE_URL + 'icon.svg'} alt="" width={40} height={40} />
+          <b>MyRecipes</b>
+          <p>Your recipes are saved on this device,<br />and in your own Google Drive if you connect it.</p>
+          <a href="./privacy.html">Privacy policy</a>
+        </div>
         </>}
 
         {tab === 'history' && <>

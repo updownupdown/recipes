@@ -3,6 +3,7 @@ import { CATALOG, canonicalCategory, categoryLook, lookVars, type Group } from '
 import { normalize } from '../hooks';
 import { Icon } from '../icons';
 
+const az = (a: string, b: string) => a.localeCompare(b);
 const GROUPS: Group[] = ['Course', 'Cuisine', 'Main ingredient', 'Diet', 'Method & occasion'];
 
 /** Pop-up for choosing categories: search, grouped lists, and your own custom categories. */
@@ -22,11 +23,10 @@ export function CategoryPicker({ value, used, onChange, onClose }: { value: stri
   const match = (name: string, aliases: string[] = []) => !nq || [name, ...aliases].some((n) => normalize(n).includes(nq));
   const sections = useMemo(() => {
     const out: [string, string[]][] = [];
-    if (value.length && !nq) out.push(['Selected', value]);
     const mine = custom.filter((c) => match(c));
-    if (mine.length) out.push(['Your categories', mine]);
+    if (mine.length) out.push(['Your categories', mine.sort(az)]);
     for (const g of GROUPS) {
-      const names = CATALOG.filter((c) => c.group === g && match(c.name, c.aliases)).map((c) => c.name);
+      const names = CATALOG.filter((c) => c.group === g && match(c.name, c.aliases)).map((c) => c.name).sort(az);
       if (names.length) out.push([g, names]);
     }
     return out;
@@ -58,6 +58,16 @@ export function CategoryPicker({ value, used, onChange, onClose }: { value: stri
               else if (hits.includes(canon) || hits.length === 1) { toggle(hits.includes(canon) ? canon : hits[0]); setQ(''); }
             }} />
         </label>
+        <div className="picked" aria-label="Selected categories">
+          {value.length ? value.map((c) => {
+            const l = categoryLook(c);
+            return (
+              <button type="button" key={c} className="chip on tint" style={lookVars(l)} onClick={() => toggle(c)} aria-label={`Remove ${c}`}>
+                <Icon name={l.icon} size={13} />{c}<Icon name="x" size={12} />
+              </button>
+            );
+          }) : <span className="muted small">Nothing selected yet. Tap categories below to add them.</span>}
+        </div>
         <div className="modal-body">
           {typed && !exact && (
             <button type="button" className="mi" onClick={create}><Icon name="plus" />Create “{canonicalCategory(typed)}”</button>

@@ -25,7 +25,7 @@ export function Home({ recipes }: { recipes: Recipe[] }) {
 
   return (
     <div className="page">
-      <TopBar title="MyRecipes" recipes={recipes} />
+      <TopBar title="MyRecipes" logo recipes={recipes} />
       <div className="pad-x">
         <SearchBox value={q} onChange={setQuery} placeholder={`Search ${recipes.length} recipes or ingredients`} />
       </div>

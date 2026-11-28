@@ -130,10 +130,11 @@ export function BackButton(_: { fallback?: string }) {
   return <button type="button" className="ib flat" onClick={() => go('')} aria-label="Home"><Icon name="home" /></button>;
 }
 
-export function TopBar({ title, back, recipes, extra }: { title?: string; back?: string; recipes: Recipe[]; extra?: React.ReactNode }) {
+export function TopBar({ title, back, recipes, extra, logo }: { title?: string; back?: string; recipes: Recipe[]; extra?: React.ReactNode; logo?: boolean }) {
   return (
     <header className="hd">
       {back !== undefined && <BackButton fallback={back} />}
+      {logo && <img className="logo" src={import.meta.env.BASE_URL + 'icon.svg'} alt="" width={34} height={34} />}
       {title && <h1 className={back !== undefined ? 'small' : ''}>{title}</h1>}
       <span className="hd-right">{extra}<SyncBadge /><AppMenu recipes={recipes} /></span>
     </header>
@@ -147,5 +148,21 @@ export function SearchBox({ value, onChange, placeholder, autoFocus }: { value: 
       <input type="search" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} aria-label="Search recipes" />
       {value && <button className="srch-x" onClick={(e) => { e.preventDefault(); onChange(''); }} aria-label="Clear search"><Icon name="x" size={15} /></button>}
     </label>
+  );
+}
+
+/** A floating bar that asks before something is removed (instead of the browser's own pop-up). */
+export function ConfirmBar({ text, action, onYes, onNo }: { text: string; action: string; onYes: () => void; onNo: () => void }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onNo(); };
+    addEventListener('keydown', k);
+    return () => removeEventListener('keydown', k);
+  }, [onNo]);
+  return (
+    <div className="confirm-bar" role="alertdialog" aria-label={text}>
+      <span>{text}</span>
+      <button type="button" className="cb-no" onClick={onNo}>Cancel</button>
+      <button type="button" className="cb-yes" onClick={onYes} autoFocus>{action}</button>
+    </div>
   );
 }

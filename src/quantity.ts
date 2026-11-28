@@ -24,8 +24,8 @@ export function parseNumber(s: string): number {
 }
 
 const NICE: [number, string][] = [
-  [0, ''], [1 / 8, '⅛'], [1 / 4, '¼'], [1 / 3, '⅓'], [3 / 8, '⅜'], [1 / 2, '½'],
-  [5 / 8, '⅝'], [2 / 3, '⅔'], [3 / 4, '¾'], [7 / 8, '⅞'], [1, ''],
+  [0, ''], [1 / 8, '1/8'], [1 / 4, '1/4'], [1 / 3, '1/3'], [3 / 8, '3/8'], [1 / 2, '1/2'],
+  [5 / 8, '5/8'], [2 / 3, '2/3'], [3 / 4, '3/4'], [7 / 8, '7/8'], [1, ''],
 ];
 
 export function formatNumber(n: number): string {
@@ -42,7 +42,16 @@ export function formatNumber(n: number): string {
   if (best[0] === 1) whole += 1;
   const f = best[0] === 1 ? '' : best[1];
   if (whole === 0) return f || '0';
-  return `${whole}${f}`;
+  return f ? `${whole} ${f}` : `${whole}`;
+}
+
+/** "1½" -> "1 1/2", "¼" -> "1/4": plain fractions read better than the font's tiny glyphs. */
+export function plainFractions(s: string): string {
+  return s.replace(new RegExp(`(\\d\\s*)?([${UF}])`, 'g'), (_, w, g) => {
+    const v = UNICODE_FRACTIONS[g];
+    const f = NICE.find(([n]) => Math.abs(n - v) < 0.01)?.[1] ?? `${Math.round(v * 100) / 100}`;
+    return (w ? w.trim() + ' ' : '') + f;
+  });
 }
 
 /** Scale the leading amount of an ingredient line. Lines without one are returned unchanged. */

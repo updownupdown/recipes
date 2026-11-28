@@ -1,4 +1,4 @@
-import { LEAD } from './quantity';
+import { LEAD, parseNumber } from './quantity';
 
 /* Converting between the plain-text recipe format (one line each) and the editor's rows. */
 
@@ -8,12 +8,30 @@ export type StepRow = { id: number; text: string };
 let seq = 0;
 export const nextId = () => ++seq;
 
-export const UNIT_OPTIONS = ['cup', 'cups', 'tbsp', 'tsp', 'g', 'kg', 'ml', 'l', 'oz', 'lb', 'pinch', 'clove', 'cloves', 'can', 'cans', 'slice', 'slices', 'bunch', 'handful', 'package', 'stick', 'sticks', 'dash'];
-const UNIT_RE = /^\s*(fl\.?\s*oz|cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|kg|g|grams?|ml|cl|dl|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg|slices?|bunch(?:es)?|handfuls?)\b\.?/i;
+/** Units offered in the editor, always singular; the saved line gets the plural when the amount needs it. */
+export const UNIT_OPTIONS = ['tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg', 'oz', 'lb', 'fl oz', 'pint', 'quart', 'pinch', 'dash', 'clove', 'can', 'slice', 'stick', 'bunch', 'sprig', 'handful', 'package', 'piece'];
+const UNIT_RE = /^\s*(fl\.?\s*oz|cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|kg|g|grams?|ml|cl|dl|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg|slices?|bunch(?:es)?|handfuls?|sprigs?|pieces?)\b\.?/i;
+
+const PLURAL: Record<string, string> = {
+  cup: 'cups', pint: 'pints', quart: 'quarts', pinch: 'pinches', dash: 'dashes', clove: 'cloves', can: 'cans', slice: 'slices',
+  stick: 'sticks', bunch: 'bunches', sprig: 'sprigs', handful: 'handfuls', package: 'packages', piece: 'pieces',
+};
+const SINGULAR = Object.fromEntries(Object.entries(PLURAL).map(([a, b]) => [b, a]));
+export const singularUnit = (u: string) => SINGULAR[u.toLowerCase()] ?? u;
+
+/** The largest number in a quantity ("1 1/2" -> 1.5, "2-3" -> 3). */
+function maxQty(q: string): number {
+  return Math.max(0, ...q.split(/\s*(?:-|–|to|or)\s*/).map((p) => parseNumber(p)));
+}
+/** "cup" with "2" -> "cups"; "cups" with "1/2" -> "cup". Abbreviations (tbsp, g, oz) never change. */
+export function unitFor(unit: string, qty: string): string {
+  const one = singularUnit(unit.trim());
+  return PLURAL[one] && maxQty(qty) > 1 ? PLURAL[one] : one;
+}
 
 const SHORT: [RegExp, string][] = [
   [/^tablespoons?$|^tbsps?\.?$|^tbs\.?$/i, 'tbsp'], [/^teaspoons?$|^tsps?\.?$/i, 'tsp'], [/^ounces?$|^oz\.$/i, 'oz'],
-  [/^pounds?$|^lbs?\.?$/i, 'lb'], [/^grams?$/i, 'g'], [/^kilograms?$/i, 'kg'], [/^c\.$/i, 'cup'],
+  [/^pounds?$|^lbs?\.?$/i, 'lb'], [/^fl\.?\s*oz\.?$/i, 'fl oz'], [/^grams?$/i, 'g'], [/^kilograms?$/i, 'kg'], [/^c\.$/i, 'cup'], [/^pkg\.?$/i, 'package'],
 ];
 /** Standard short units in the editor ("teaspoons" -> "tsp") so they fit the unit box. */
 function shortUnit(u: string): string {
@@ -26,14 +44,14 @@ export function lineToRow(line: string): IngRow {
   if (!m) return { id: nextId(), kind: 'item', qty: '', unit: '', label: line.trim() };
   let rest = line.slice(m[0].length);
   const u = rest.match(UNIT_RE);
-  const unit = u ? shortUnit(u[0].trim()) : '';
+  const unit = u ? singularUnit(shortUnit(u[0].trim())) : '';
   if (u) rest = rest.slice(u[0].length);
   return { id: nextId(), kind: 'item', qty: m[0].trim(), unit, label: rest.trim() };
 }
 
 export function rowToLine(r: IngRow): string {
   if (r.kind === 'section') return r.label.trim() ? '# ' + r.label.trim() : '';
-  return [r.qty.trim(), r.unit.trim(), r.label.trim()].filter(Boolean).join(' ');
+  return [r.qty.trim(), unitFor(r.unit, r.qty), r.label.trim()].filter(Boolean).join(' ');
 }
 
 export const emptyItem = (): IngRow => ({ id: nextId(), kind: 'item', qty: '', unit: '', label: '' });
