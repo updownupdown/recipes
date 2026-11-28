@@ -252,8 +252,7 @@ label.choice, label.btn { cursor: pointer; }
 .h5 { align-items: center; }
 .h5 .cook { height: 32px; font-size: 13px; padding: 0 12px; }
 .h5 + .awake-note { margin: -2px 20px 10px; }
-.ib.queued { color: #c77700; }
-@media (prefers-color-scheme: dark) { .ib.queued { color: #ffc24d; } }
+.ib.queued { color: var(--fg); }
 .hint { display: flex; align-items: center; gap: 6px; margin: 0; }
 .ctl.one { flex-wrap: nowrap; gap: 6px; }
 .ctl.one .cook { margin-left: auto; height: 34px; padding: 0 12px; font-size: 13.5px; gap: 5px; white-space: nowrap; }
