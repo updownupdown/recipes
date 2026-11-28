@@ -10,7 +10,7 @@ export const nextId = () => ++seq;
 
 /** Units offered in the editor, always singular; the saved line gets the plural when the amount needs it. */
 export const UNIT_OPTIONS = ['tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg', 'oz', 'lb', 'fl oz', 'pint', 'quart', 'pinch', 'dash', 'clove', 'can', 'slice', 'stick', 'bunch', 'sprig', 'handful', 'package', 'piece'];
-const UNIT_RE = /^\s*(fl\.?\s*oz|cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|kg|g|grams?|ml|cl|dl|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg|slices?|bunch(?:es)?|handfuls?|sprigs?|pieces?)\b\.?/i;
+export const UNIT_RE = /^\s*(fl\.?\s*oz|cups?|c\.|tbsps?|tablespoons?|tsps?|teaspoons?|kg|g|grams?|ml|cl|dl|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pints?|quarts?|cans?|cloves?|pinch(?:es)?|dash(?:es)?|sticks?|packages?|pkg|slices?|bunch(?:es)?|handfuls?|sprigs?|pieces?)\b\.?/i;
 
 const PLURAL: Record<string, string> = {
   cup: 'cups', pint: 'pints', quart: 'quarts', pinch: 'pinches', dash: 'dashes', clove: 'cloves', can: 'cans', slice: 'slices',

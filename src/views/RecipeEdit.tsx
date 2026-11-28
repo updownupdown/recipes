@@ -1,57 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { categoryLook, lookVars, recipeLook } from '../categories';
 import { fixCaps, hasAllCaps } from '../caps';
 import { allRecipes, saveRecipe } from '../db';
 import { ask } from '../ask';
-import { emptyItem, formatTime, lineToRow, nextId, parseTime, rowToLine, singularUnit, UNIT_OPTIONS, type IngRow, type StepRow } from '../editRows';
+import { formatTime, parseTime } from '../editRows';
 import { goBack, replace } from '../hooks';
 import { Icon } from '../icons';
 import type { Recipe, RecipeDraft } from '../types';
 import { CategoryPicker } from './CategoryPicker';
+import { LineEditor, toLines, type Line } from './LineEditor';
 
-type Mode = 'rows' | 'text';
 const EMPTY: RecipeDraft = { title: '', categories: [], ingredients: [], instructions: [] };
-const MODE_KEY = 'edit_mode';
-const loadMode = (): Mode => { try { return localStorage.getItem(MODE_KEY) === 'rows' ? 'rows' : 'text'; } catch { return 'text'; } };
-const lines = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
-const toRows = (ing: string[]) => (ing.length ? ing.map(lineToRow) : [emptyItem()]);
-const toSteps = (ins: string[]): StepRow[] => (ins.length ? ins : ['']).map((text) => ({ id: nextId(), text }));
 
-/** Focus a field after React has rendered it. */
-const focusLater = (sel: string) => setTimeout(() => (document.querySelector(sel) as HTMLElement | null)?.focus(), 30);
 
 export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?: RecipeDraft; similar?: Recipe }) {
   const start = recipe ?? draft ?? EMPTY;
-  const [mode, setModeState] = useState<Mode>(loadMode);
   const [title, setTitle] = useState(start.title);
   const [cats, setCats] = useState<string[]>(start.categories);
   const [picking, setPicking] = useState(false);
   const [servings, setServings] = useState(start.servings ?? 0);
   const [time, setTime] = useState(start.time ?? '');
   const [timeAsText, setTimeAsText] = useState(() => !!start.time && !parseTime(start.time));
-  // Plain-text mode edits these strings; rows mode edits the arrays. Switching converts between them.
-  const [ingText, setIngText] = useState(start.ingredients.join('\n'));
-  const [insText, setInsText] = useState(start.instructions.join('\n'));
-  const [rows, setRows] = useState<IngRow[]>(() => toRows(start.ingredients));
-  const [steps, setSteps] = useState<StepRow[]>(() => toSteps(start.instructions));
+  const [ing, setIng] = useState<Line[]>(() => toLines(start.ingredients));
+  const [ins, setIns] = useState<Line[]>(() => toLines(start.instructions));
   const [notes, setNotes] = useState(start.notes ?? '');
   const [source, setSource] = useState(start.source ?? '');
   const [error, setError] = useState('');
   const [used, setUsed] = useState<string[]>([]);
   useEffect(() => { allRecipes().then((l) => setUsed([...new Set(l.flatMap((r) => r.categories))])); }, []);
 
-  const currentIng = () => (mode === 'text' ? lines(ingText) : rows.map(rowToLine).filter(Boolean));
-  const currentIns = () => (mode === 'text' ? lines(insText) : steps.map((s) => s.text.trim()).filter(Boolean));
-  const setContent = (ing: string[], ins: string[]) => {
-    setIngText(ing.join('\n')); setInsText(ins.join('\n'));
-    setRows(toRows(ing)); setSteps(toSteps(ins));
-  };
-  const setMode = (m: Mode) => {
-    if (m === mode) return;
-    setContent(currentIng(), currentIns());
-    setModeState(m);
-    try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
-  };
+  const texts = (ls: Line[]) => ls.map((l) => l.text.trim()).filter(Boolean);
+  const currentIng = () => texts(ing);
+  const currentIns = () => texts(ins);
+  const setContent = (i: string[], st: string[]) => { setIng(toLines(i)); setIns(toLines(st)); };
 
   const look = recipeLook({ title, categories: cats, ingredients: currentIng() });
   const snapshot = () => JSON.stringify([title, cats, servings, time, currentIng(), currentIns(), notes, source]);
@@ -88,33 +69,7 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
     else replace('recipe/' + saved.id);
   };
 
-  // Rows editing helpers
-  const patchRow = (id: number, p: Partial<IngRow>) => setRows((rs) => rs.map((r) => (r.id === id ? ({ ...r, ...p } as IngRow) : r)));
-  const addRowAfter = (id: number | null, row: IngRow) => {
-    setRows((rs) => { const i = id === null ? rs.length - 1 : rs.findIndex((r) => r.id === id); const n = [...rs]; n.splice(i + 1, 0, row); return n; });
-    focusLater(`[data-row="${row.id}"]`);
-  };
-  const removeRow = (r: IngRow) => {
-    const go = () => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : [emptyItem()]));
-    const line = rowToLine(r).replace(/^#\s*/, '');
-    if (!line) go();
-    else ask({ title: `Remove “${line}”?`, yes: 'Remove', danger: true }).then((ok) => ok && go());
-  };
-  const removeStep = (st: StepRow) => {
-    const go = () => setSteps((ss) => (ss.length > 1 ? ss.filter((x) => x.id !== st.id) : [{ id: nextId(), text: '' }]));
-    if (!st.text.trim()) go();
-    else ask({ title: 'Remove this step?', body: st.text.length > 90 ? st.text.slice(0, 90) + '…' : st.text, yes: 'Remove', danger: true }).then((ok) => ok && go());
-  };
-  const ingDrag = useDragReorder(setRows);
-  const stepDrag = useDragReorder(setSteps);
-  const addStepAfter = (id: number | null) => {
-    const s = { id: nextId(), text: '' };
-    setSteps((ss) => { const i = id === null ? ss.length - 1 : ss.findIndex((x) => x.id === id); const n = [...ss]; n.splice(i + 1, 0, s); return n; });
-    focusLater(`[data-step="${s.id}"]`);
-  };
-
   const [th, tm] = parseTime(time) ?? [0, 0];
-  let stepNo = 0;
 
   return (
     <form className="page edit" onSubmit={save}>
@@ -173,73 +128,10 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
           </div>
         </div>
 
-        <div className="row edit-mode">
-          <span className="lbl">Ingredients and steps</span>
-          <div className="seg sm push" role="group" aria-label="Editor">
-            <button type="button" className={mode === 'text' ? 'on' : ''} onClick={() => setMode('text')}>Plain text</button>
-            <button type="button" className={mode === 'rows' ? 'on' : ''} onClick={() => setMode('rows')}>Rows</button>
-          </div>
-        </div>
-
-        {mode === 'text' ? (
-          <>
-            <label className="lbl">Ingredients <small>one per line; start a line with # for a section, like “# Sauce”</small>
-              <textarea id="ing" className="field" rows={10} value={ingText} onChange={(e) => setIngText(e.target.value)} placeholder={'2 cups flour\n1 tsp salt\n# Topping\n2 tbsp sugar'} />
-            </label>
-            <label className="lbl">Steps <small>optional, one per line</small>
-              <textarea id="ins" className="field" rows={8} value={insText} onChange={(e) => setInsText(e.target.value)} />
-            </label>
-          </>
-        ) : (
-          <>
-            <div className="lbl">Ingredients</div>
-            <div className="rows" ref={ingDrag.list}>
-              {rows.map((r, i) => r.kind === 'section' ? (
-                <div key={r.id} data-idx={i} className={'erow section' + (ingDrag.dragging === i ? ' dragging' : '')}>
-                  <Grip {...ingDrag.handle(i)} />
-                  <input data-row={r.id} className="field" value={r.label} placeholder="Section, e.g. Sauce" onChange={(e) => patchRow(r.id, { label: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Section name" />
-                  <Trash onClick={() => removeRow(r)} />
-                </div>
-              ) : (
-                <div key={r.id} data-idx={i} className={'erow' + (ingDrag.dragging === i ? ' dragging' : '')}>
-                  <Grip {...ingDrag.handle(i)} />
-                  <input data-row={r.id} className="field qty" value={r.qty} placeholder="Qty" inputMode="decimal" onChange={(e) => patchRow(r.id, { qty: e.target.value })} aria-label="Quantity" />
-                  <select className={'field unit' + (r.unit ? '' : ' empty')} value={singularUnit(r.unit)} onChange={(e) => patchRow(r.id, { unit: e.target.value })} aria-label="Unit">
-                    <option value="">Unit</option>
-                    {[...(r.unit && !UNIT_OPTIONS.includes(singularUnit(r.unit)) ? [singularUnit(r.unit)] : []), ...UNIT_OPTIONS].map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  <input className="field grow" value={r.label} placeholder="Ingredient" onChange={(e) => patchRow(r.id, { label: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRowAfter(r.id, emptyItem()); } }} aria-label="Ingredient" />
-                  <Trash onClick={() => removeRow(r)} />
-                </div>
-              ))}
-            </div>
-            <div className="row gap">
-              <button type="button" className="pill" onClick={() => addRowAfter(null, emptyItem())}><Icon name="plus" size={13} />Ingredient</button>
-              <button type="button" className="pill" onClick={() => addRowAfter(null, { id: nextId(), kind: 'section', label: '' })}><Icon name="plus" size={13} />Section</button>
-            </div>
-
-            <div className="lbl">Steps <small>a short line ending in “:” becomes a heading</small></div>
-            <div className="rows" ref={stepDrag.list}>
-              {steps.map((s, i) => {
-                const heading = s.text.trim().length < 48 && s.text.trim().endsWith(':');
-                if (!heading && s.text.trim()) stepNo++;
-                return (
-                  <div key={s.id} data-idx={i} className={'erow step' + (stepDrag.dragging === i ? ' dragging' : '')}>
-                    <Grip {...stepDrag.handle(i)} />
-                    <i className={heading ? 'h' : ''}>{heading ? <Icon name="type" size={12} /> : s.text.trim() ? stepNo : '·'}</i>
-                    <textarea data-step={s.id} className="field grow" rows={Math.max(1, Math.ceil(s.text.length / 34))} value={s.text} placeholder={i === 0 ? 'First step' : 'Next step'}
-                      onChange={(e) => setSteps((ss) => ss.map((x) => (x.id === s.id ? { ...x, text: e.target.value.replace(/\n/g, ' ') } : x)))}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStepAfter(s.id); } }} aria-label={`Step ${i + 1}`} />
-                    <Trash onClick={() => removeStep(s)} />
-                  </div>
-                );
-              })}
-            </div>
-            <div><button type="button" className="pill" onClick={() => addStepAfter(null)}><Icon name="plus" size={13} />Step</button></div>
-          </>
-        )}
+        <div className="lbl edit-mode">Ingredients <small>one per line; # starts a section</small></div>
+        <LineEditor kind="ing" lines={ing} onChange={setIng} placeholder="2 cups flour, or paste a whole list" />
+        <div className="lbl">Steps <small>one per line</small></div>
+        <LineEditor kind="step" lines={ins} onChange={setIns} placeholder="First step" />
 
         <label className="lbl">Notes <small>optional; links work</small>
           <textarea id="notes" className="field" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -249,39 +141,4 @@ export function RecipeEdit({ recipe, draft, similar }: { recipe?: Recipe; draft?
       {picking && <CategoryPicker value={cats} used={used} onChange={setCats} onClose={() => setPicking(false)} />}
     </form>
   );
-}
-
-function Grip(props: React.HTMLAttributes<HTMLSpanElement>) {
-  return <span className="grip" aria-label="Drag to reorder" {...props}><Icon name="grip" size={16} /></span>;
-}
-
-function Trash({ onClick }: { onClick: () => void }) {
-  return <button type="button" className="trash" onClick={onClick} aria-label="Remove"><Icon name="trash" size={16} /></button>;
-}
-
-/** Drag-and-drop reordering by a handle; works with touch and mouse. Rows carry data-idx. */
-function useDragReorder<T>(setItems: React.Dispatch<React.SetStateAction<T[]>>) {
-  const list = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState<number | null>(null);
-  const cur = useRef<number | null>(null);
-  const handle = (i: number) => ({
-    onPointerDown: (e: React.PointerEvent) => {
-      e.preventDefault();
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-      cur.current = i; setDragging(i);
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      if (cur.current === null || !list.current) return;
-      const rowsEls = [...list.current.querySelectorAll<HTMLElement>(':scope > [data-idx]')];
-      let to = rowsEls.findIndex((el) => { const b = el.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
-      if (to === -1) to = rowsEls.length - 1;
-      const from = cur.current;
-      if (to === from) return;
-      setItems((items) => { const n = [...items]; const [it] = n.splice(from, 1); n.splice(to, 0, it); return n; });
-      cur.current = to; setDragging(to);
-    },
-    onPointerUp: () => { cur.current = null; setDragging(null); },
-    onPointerCancel: () => { cur.current = null; setDragging(null); },
-  });
-  return { list, dragging, handle };
 }
